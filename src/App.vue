@@ -6,19 +6,20 @@ import HelloWorld from './components/HelloWorld.vue'
 <template>
   <header>
     <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
-
     <div class="wrapper">
       <HelloWorld msg="You did it!" />
-
       <nav>
         <RouterLink to="/">Home2222</RouterLink>
         <RouterLink to="/about">About222222222</RouterLink>
       </nav>
     </div>
   </header>
-
   <RouterView />
 </template>
+
+
+
+
 
 <style scoped>
 header {

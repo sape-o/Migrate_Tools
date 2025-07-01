@@ -1,19 +1,27 @@
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
 import Sidebar from './components/Sidebar.vue';
+import DefaultLayout from './layouts/DefaultLayout.vue'
 </script>
 
 
 <template>
-  <div class="app-container">
-    <Sidebar />
-    <router-view />
-  </div>
+    <DefaultLayout>
+      <router-view />
+    </DefaultLayout>
 </template>
 
 <style>
-.app-container {
-  display: flex;
+
+body, html, #app {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+* {
+  box-sizing: inherit;
 }
 </style>
 

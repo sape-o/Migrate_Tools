@@ -24,39 +24,37 @@ const navItems = [
 
 <style scoped>
 .sidebar {
-  position: fixed; /* ติดกับขอบซ้ายตลอด */
-  top: 20px;
-  left: 10px;
-  height: calc(100vh - 40px); /* เว้นขอบบน-ล่างรวม 40px */  width: 220px;
-  background-color: #2c3e50;
-  padding: 15px 10px; /* margin ด้านในเล็กน้อย */
-  border-radius: 12px;   /* มนทั้งกล่อง */
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
-  display: flex;
-  flex-direction: column;
-    margin-left: 10px;     /* เลื่อนออกจากขอบจอเล็กน้อย */
+  width: 240px;
+  height: 100vh;
+  max-height: 100vh;   /* สูงไม่เกิน viewport */
+  overflow-y: auto;    /* เพิ่ม scroll ถ้าเนื้อหายาวเกิน */
+  padding: 20px;
+  background-color: #ffffff;
+  color: white;
+  margin-left: 1%;
+  margin-top: 1%;
+  margin-bottom: 2.5vh;
+  border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  box-sizing: border-box;
 }
 
 .nav-item {
-  color: #ecf0f1;
+  color: #555;
   text-decoration: none;
   padding: 12px 15px;
   display: flex;
   align-items: center;
-  border-radius: 8px;
+  border-radius: 4px;
   margin-bottom: 8px;
   transition: background 0.3s;
 }
 
-.nav-item i {
-  margin-right: 10px;
-}
-
 .nav-item:hover {
-  background-color: #f4ffb6;
+  background-color: #f0f0f0;
 }
 
 .active {
-  background-color: #1abc9c;
+  background-color: #e0e0e0;
 }
 </style>

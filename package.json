@@ -11,6 +11,10 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "multer": "^2.0.1",
+    "mysql2": "^3.14.1",
     "vue": "^3.5.17",
     "vue-router": "^4.5.1"
   },
@@ -24,5 +28,10 @@
     "prettier": "3.5.3",
     "vite": "^7.0.0",
     "vite-plugin-vue-devtools": "^7.7.7"
-  }
+  },
+  "description": "This template should help get you started developing with Vue 3 in Vite.",
+  "main": "eslint.config.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

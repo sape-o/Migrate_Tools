@@ -10,7 +10,6 @@
 </template>
 
 <script setup>
-import DefaultLayout from '../layouts/DefaultLayout.vue'
 
 const objects = Array.from({ length: 20 }, (_, i) => ({
   no: i + 1,

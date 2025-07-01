@@ -12,7 +12,6 @@ const router = createRouter({
     {path: '/list-policy', component: ListPolicy,},
     {path: '/import-object', component: ImportObject,},
 
-    {path: '/about',component: () => import('../views/AboutView.vue'),},
 
   ],
 })

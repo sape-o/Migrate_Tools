@@ -10,7 +10,7 @@ const route = useRoute()
 
 // เลือก layout จาก meta.layout
 const layoutComponent = computed(() => {
-  return route.meta.layout === 'auth' ? LoginLayout : Layout
+  return route.meta.layout === 'auth' ? LoginLayout : DefaultLayout
 })
 </script>
 

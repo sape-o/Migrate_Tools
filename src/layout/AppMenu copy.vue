@@ -8,113 +8,94 @@ const model = ref([
         label: 'Home',
         items: [{ label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/' }]
     },
+    
     {
-        label: 'ENGINEER',
+        label: 'Pages',
         icon: 'pi pi-fw pi-briefcase',
         to: '/pages',
         items: [
             {
-                label: 'MIGRATIONS',
+                label: 'Landing',
+                icon: 'pi pi-fw pi-globe',
+                to: '/landing'
+            },
+            {
+                label: 'Auth',
                 icon: 'pi pi-fw pi-user',
                 items: [
                     {
-                        label: 'ADDRESS',
+                        label: 'Login',
                         icon: 'pi pi-fw pi-sign-in',
                         to: '/auth/login'
                     },
                     {
-                        label: 'ADDRESS GROUP',
+                        label: 'Error',
                         icon: 'pi pi-fw pi-times-circle',
                         to: '/auth/error'
                     },
                     {
-                        label: 'SERVICE',
-                        icon: 'pi pi-fw pi-sign-in',
-                        to: '/auth/login'
-                    },
-                    {
-                        label: 'SERVICE GROUP',
-                        icon: 'pi pi-fw pi-times-circle',
-                        to: '/auth/error'
-                    },
-                    {
-                        label: 'POLICY',
+                        label: 'Access Denied',
                         icon: 'pi pi-fw pi-lock',
                         to: '/auth/access'
                     }
                 ]
             },
-        ]
-    },
-    {
-        label: 'CHANGE',
-        items: [
-            { label: 'CHANGE REQUEST', icon: 'pi pi-fw pi-id-card', to: '/uikit/formlayout' },
-            { label: 'CHANGE APPROVE', icon: 'pi pi-fw pi-check-square', to: '/uikit/input' },
-        ]
-    },
-        {
-        label: 'ADMIN OFFICER',
-        items: [
-            { label: 'CHANGE REQUEST', icon: 'pi pi-fw pi-id-card', to: '/uikit/formlayout' },
-            { label: 'CHANGE APPROVE', icon: 'pi pi-fw pi-check-square', to: '/uikit/input' },
-        ]
-    },
-    {
-        label: 'ROOT ZONE',
-        items: [
             {
-                label: 'USER SETTINGS',
-                icon: 'pi pi-fw pi-user',
-                items: [
-                    {
-                        label: 'USER',
-                        icon: 'pi pi-fw pi-sign-in',
-                        to: '/root/users'
-                    },
-                    {
-                        label: 'USER PRIVILEGE',
-                        icon: 'pi pi-fw pi-times-circle',
-                        to: '/auth/error'
-                    },
-                ]
+                label: 'Crud',
+                icon: 'pi pi-fw pi-pencil',
+                to: '/pages/crud'
             },
             {
-                label: 'MIGRATE',
+                label: 'Not Found',
+                icon: 'pi pi-fw pi-exclamation-circle',
+                to: '/pages/notfound'
+            },
+            {
+                label: 'Empty',
+                icon: 'pi pi-fw pi-circle-off',
+                to: '/pages/empty'
+            }
+        ]
+    },
+    {
+        label: 'Hierarchy',
+        items: [
+            {
+                label: 'Submenu 1',
                 icon: 'pi pi-fw pi-bookmark',
                 items: [
                     {
-                        label: 'MIGRATE 1.1',
+                        label: 'Submenu 1.1',
                         icon: 'pi pi-fw pi-bookmark',
                         items: [
-                            { label: 'MIGRATE 1.1.1', icon: 'pi pi-fw pi-bookmark' },
-                            { label: 'MIGRATE 1.1.2', icon: 'pi pi-fw pi-bookmark' },
-                            { label: 'MIGRATE 1.1.3', icon: 'pi pi-fw pi-bookmark' }
+                            { label: 'Submenu 1.1.1', icon: 'pi pi-fw pi-bookmark' },
+                            { label: 'Submenu 1.1.2', icon: 'pi pi-fw pi-bookmark' },
+                            { label: 'Submenu 1.1.3', icon: 'pi pi-fw pi-bookmark' }
                         ]
                     },
                     {
-                        label: 'MIGRATE 1.2',
+                        label: 'Submenu 1.2',
                         icon: 'pi pi-fw pi-bookmark',
-                        items: [{ label: 'MIGRATE 1.2.1', icon: 'pi pi-fw pi-bookmark' }]
+                        items: [{ label: 'Submenu 1.2.1', icon: 'pi pi-fw pi-bookmark' }]
                     }
                 ]
             },
             {
-                label: 'CHANGE',
+                label: 'Submenu 2',
                 icon: 'pi pi-fw pi-bookmark',
                 items: [
                     {
-                        label: 'CHANGE 2.1',
+                        label: 'Submenu 2.1',
                         icon: 'pi pi-fw pi-bookmark',
                         items: [
-                            { label: 'CHANGE 2.1.1', icon: 'pi pi-fw pi-bookmark' },
-                            { label: 'CHANGE 2.1.2', icon: 'pi pi-fw pi-bookmark' }
+                            { label: 'Submenu 2.1.1', icon: 'pi pi-fw pi-bookmark' },
+                            { label: 'Submenu 2.1.2', icon: 'pi pi-fw pi-bookmark' }
                         ]
                     },
                     {
-                        label: 'CHANGE 2.2',
+                        label: 'Submenu 2.2',
                         icon: 'pi pi-fw pi-bookmark',
-                        items: [{ label: 'CHANGE 2.2.1', icon: 'pi pi-fw pi-bookmark' }]
+                        items: [{ label: 'Submenu 2.2.1', icon: 'pi pi-fw pi-bookmark' }]
                     }
                 ]
             }

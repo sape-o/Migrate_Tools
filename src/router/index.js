@@ -14,6 +14,11 @@ const router = createRouter({
                     component: () => import('@/views/Dashboard.vue')
                 },
                 {
+                    path: '/root/users',
+                    component: AppLayout,
+                    component: () => import('@/views/root/User.vue')
+                },
+                {
                     path: '/uikit/formlayout',
                     name: 'formlayout',
                     component: () => import('@/views/uikit/FormLayout.vue')
@@ -106,6 +111,7 @@ const router = createRouter({
                 }
             ]
         },
+
         {
             path: '/landing',
             name: 'landing',
@@ -133,6 +139,18 @@ const router = createRouter({
             component: () => import('@/views/pages/auth/Error.vue')
         }
     ]
+});
+
+router.beforeEach((to, from, next) => {
+  const publicPages = ['/auth/login', '/landing', '/auth/error', '/auth/access'];
+  const authRequired = !publicPages.includes(to.path);
+  const token = localStorage.getItem('token');
+
+  if (authRequired && !token) {
+    return next('/auth/login');
+  }
+
+  next();
 });
 
 export default router;

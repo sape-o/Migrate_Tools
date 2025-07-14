@@ -50,7 +50,7 @@ function unbindOutsideClickListener() {
 function isOutsideClicked(event) {
     const sidebarEl = document.querySelector('.layout-sidebar');
     const topbarEl = document.querySelector('.layout-menu-button');
-
+    if (!elementRef.value) return false // ป้องกัน null
     return !(sidebarEl.isSameNode(event.target) || sidebarEl.contains(event.target) || topbarEl.isSameNode(event.target) || topbarEl.contains(event.target));
 }
 </script>

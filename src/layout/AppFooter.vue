@@ -2,7 +2,7 @@
 
 <template>
     <div class="layout-footer">
-        SAKAI by
-        <a href="https://primevue.org" target="_blank" rel="noopener noreferrer" class="text-primary font-bold hover:underline">PrimeVue</a>
+        AMANDA BY
+        <a href="https://seanetasia.com" target="_blank" rel="noopener noreferrer" class="text-primary font-bold hover:underline">"OREO"   Seanetasia Co.,Ltd.</a>
     </div>
 </template>

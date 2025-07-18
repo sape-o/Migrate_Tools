@@ -14,9 +14,14 @@ const router = createRouter({
                     component: () => import('@/views/Dashboard.vue')
                 },
                 {
+                    path: '/migration/migration-address',
+                    name: 'address',
+                    component: () => import('@/views/migration/MigrationAddress.vue')
+                },
+                {
                     path: '/root/users',
                     component: AppLayout,
-                    component: () => import('@/views/root/User.vue')
+                    component: () => import('@/views/root/RootUser.vue')
                 },
                 {
                     path: '/uikit/formlayout',

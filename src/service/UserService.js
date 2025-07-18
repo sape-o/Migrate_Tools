@@ -4,7 +4,7 @@ export const UserService = {
   async getCustomersLarge() {
     try {
       const token = getToken();
-      const response = await fetch('http://127.0.0.1:3000/users', {
+      const response = await fetch(`${API_URL}/users`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

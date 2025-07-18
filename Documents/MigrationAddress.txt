@@ -1,0 +1,16 @@
+Front End
+
+
+
+
+
+Back End
+
+ดึงข้อมูลเข้ามา show 
+/migration/get-address
+= migrationGetAddress
+
+ id, filename, mimetype, upload_date, create_file_time, status, type
+
+ uploadFile
+ /migration/import-address

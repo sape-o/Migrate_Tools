@@ -20,7 +20,7 @@ const model = ref([
                     {
                         label: 'ADDRESS',
                         icon: 'pi pi-fw pi-sign-in',
-                        to: '/auth/login'
+                        to: '/migration/migration-address'
                     },
                     {
                         label: 'ADDRESS GROUP',

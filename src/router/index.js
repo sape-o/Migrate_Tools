@@ -1,5 +1,5 @@
-import AppLayout from '@/layout/AppLayout.vue';
-import { createRouter, createWebHistory } from 'vue-router';
+import AppLayout from '@/layout/AppLayout.vue'
+import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
     history: createWebHistory(),
@@ -15,8 +15,23 @@ const router = createRouter({
                 },
                 {
                     path: '/migration/migration-address',
-                    name: 'address',
+                    name: 'migrationaddress',
                     component: () => import('@/views/migration/MigrationAddress.vue')
+                },
+                                {
+                    path: '/migration/migration-address-detail/:id',
+                    name: 'migrationAddressDetail',
+                    component: () => import('@/views/migration/MigrationAddressDetail.vue')
+                },
+                {
+                    path: '/migration/migration-service',
+                    name: 'migrationService',
+                    component: () => import('@/views/migration/MigrationService.vue')
+                },
+                {
+                    path: '/migration/migration-service-detail/:id',
+                    name: 'migrationServiceDetail',
+                    component: () => import('@/views/migration/MigrationServiceDetail.vue')
                 },
                 {
                     path: '/root/users',
@@ -158,4 +173,4 @@ router.beforeEach((to, from, next) => {
   next();
 });
 
-export default router;
+export default router

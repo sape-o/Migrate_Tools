@@ -9,22 +9,22 @@ const id = route.params.id
 const rows = ref([])
 const headers = ref([])
 const rowsPerPage = ref(10)
+
 const filters = ref({
   global: { value: null, matchMode: 'contains' },
   name: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
   location: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
-  type: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
-  address: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
-  tags: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] }
+  protocol: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
+  destination_port: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] }
 })
 
-const filteredRows = ref([]) // แถวที่กรองแล้ว
+const filteredRows = ref([])
 
 // dialog control
 const exportDialogVisible = ref(false)
 const exportDialogType = ref('') // 'csv' หรือ 'commands'
 
-// ฟังก์ชันตั้งชื่อไฟล์แบบ Address_DD-MM-YYYY_HH-MM-SS
+// ตั้งชื่อไฟล์แบบ Address_DD-MM-YYYY_HH-MM-SS
 function getTimestampString() {
   const d = new Date()
   const day = String(d.getDate()).padStart(2, '0')
@@ -57,12 +57,13 @@ onMounted(async () => {
     rows.value = parsed.slice(1).map(row => {
       const obj = {}
       headers.value.forEach((h, i) => {
-        obj[h.toLowerCase()] = row[i]
+        obj[h.toLowerCase().replace(/ /g, '_')] = row[i]
       })
-      obj.id = row[0] || Math.random().toString(36).substring(2, 9)
+      obj.id = Math.random().toString(36).substring(2, 9)
       return obj
     })
-    filteredRows.value = rows.value.slice()
+
+    filteredRows.value = [...rows.value]
   } catch (err) {
     alert('Error loading CSV: ' + err.message)
   }
@@ -83,25 +84,6 @@ function parseCSV(text) {
       cell.replace(/^"|"$/g, '').trim()
     )
   )
-}
-
-function handleCLI(row) {
-  const name = row.name || ''
-  const type = row.type || ''
-  const address = row.address || ''
-
-  if (!name || !type || !address) {
-    alert('Missing required fields: Name / Type / Address')
-    return
-  }
-
-  const message = `add name ${name} type ${type} address ${address}`
-  alert(message)
-}
-function onPushAPI(row) {
-  if (confirm(`Are you sure you want to push API for: ${row.name || row.id}?`)) {
-    alert(`Pushed API for ${row.name || row.id} (not really implemented)`)
-  }
 }
 
 // ฟังก์ชันเปิด dialog ก่อน export CSV
@@ -129,7 +111,7 @@ function exportCSV() {
   const csvContent = [
     headers.value.join(','),
     ...filteredRows.value.map(row =>
-      headers.value.map(h => `"${row[h.toLowerCase()] || ''}"`).join(',')
+      headers.value.map(h => `"${row[h.toLowerCase().replace(/ /g, '_')] || ''}"`).join(',')
     )
   ].join('\n')
 
@@ -137,7 +119,7 @@ function exportCSV() {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `Address_Filter_${getTimestampString()}.csv`
+  link.download = `Address_${getTimestampString()}.csv`
   link.click()
   URL.revokeObjectURL(url)
   exportDialogVisible.value = false
@@ -147,25 +129,40 @@ function exportCSV() {
 function exportCommands() {
   const commands = filteredRows.value.map(row => {
     const name = row.name || ''
-    const type = row.type || ''
-    const address = row.address || ''
-    return `add name ${name} type ${type} address ${address}`
+    const protocol = row.protocol || ''
+    const destinationPort = row.destination_port || ''
+    return `add name ${name} protocol ${protocol} Destinationport ${destinationPort}`
   }).join('\n')
 
   const blob = new Blob([commands], { type: 'text/plain;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `Address_${getTimestampString()}.txt`
+  link.download = `Address_Commands_${getTimestampString()}.txt`
   link.click()
   URL.revokeObjectURL(url)
   exportDialogVisible.value = false
+}
+
+function handleCLI(row) {
+  const name = row.name || ''
+  const protocol = row.protocol || ''
+  const destinationPort = row.destination_port || ''
+
+  if (!name || !protocol || !destinationPort) {
+    alert('Missing required fields: Name / Protocol / Destination Port')
+    return
+  }
+
+  const message = `add name ${name} protocol ${protocol} Destinationport ${destinationPort}`
+  alert(message)
 }
 
 function onFilter(event) {
   filteredRows.value = event.filteredValue || rows.value
 }
 
+// dialog ปุ่ม Yes กดแล้ว export
 function onDialogYes() {
   if (exportDialogType.value === 'csv') {
     exportCSV()
@@ -174,6 +171,7 @@ function onDialogYes() {
   }
 }
 
+// dialog ปุ่ม No กดแล้วปิด dialog
 function onDialogNo() {
   exportDialogVisible.value = false
 }
@@ -186,14 +184,9 @@ function onDialogNo() {
     <div class="flex justify-between items-center flex-wrap mb-3 gap-2">
       <Button icon="pi pi-filter-slash" label="Clear" outlined @click="initFilters" />
       <div class="flex flex-grow justify-center items-center gap-2">
-        <InputText
-          v-model="filters.global.value"
-          placeholder="ค้นหา..."
-          class="w-full max-w-lg"
-        />
+        <InputText v-model="filters.global.value" placeholder="ค้นหา..." class="w-full max-w-lg" />
         <span class="text-gray-600 text-sm whitespace-nowrap">ผลลัพธ์: {{ filteredRows.length }} รายการ</span>
       </div>
-
       <div class="flex items-center gap-2">
         <Dropdown
           :options="rowsPerPageOptions"
@@ -217,7 +210,7 @@ function onDialogNo() {
       v-model:filters="filters"
       filterDisplay="menu"
       :filters="filters"
-      :globalFilterFields="['name', 'location', 'type', 'address', 'tags']"
+      :globalFilterFields="['name', 'location', 'protocol', 'destination_port']"
       showGridlines
       responsiveLayout="scroll"
       @filter="onFilter"
@@ -234,24 +227,21 @@ function onDialogNo() {
         </template>
       </Column>
 
-      <Column field="type" header="Type" style="min-width: 120px">
+      <Column field="protocol" header="Protocol" style="min-width: 120px">
         <template #filter="{ filterModel }">
-          <InputText v-model="filterModel.value" placeholder="Search Type" />
+          <InputText v-model="filterModel.value" placeholder="Search Protocol" />
         </template>
       </Column>
-
-      <Column field="address" header="Address" style="min-width: 250px">
+      <Column field="destination_port" header="Destination Port" style="min-width: 120px; max-width: 180px;">
+        <template #body="{ data }">
+          <div style="white-space: normal; word-break: break-word;">
+            {{ data.destination_port }}
+          </div>
+        </template>
         <template #filter="{ filterModel }">
-          <InputText v-model="filterModel.value" placeholder="Search Address" />
+          <InputText v-model="filterModel.value" placeholder="Search Port" />
         </template>
       </Column>
-
-      <Column field="tags" header="Tags" style="min-width: 150px">
-        <template #filter="{ filterModel }">
-          <InputText v-model="filterModel.value" placeholder="Search Tags" />
-        </template>
-      </Column>
-
       <Column header="Action" style="min-width: 180px" bodyClass="text-center">
         <template #body="{ data }">
           <div class="flex gap-2 justify-center">

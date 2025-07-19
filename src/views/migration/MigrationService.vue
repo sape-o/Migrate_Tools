@@ -1,7 +1,7 @@
 <script setup>
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api'
 import { onBeforeMount, ref } from 'vue'
-import { MigrateGetAddress, uploadFile, downloadCSVFileAddress } from '../../service/migration/MigrationAddress'
+import { MigrateGetService, uploadFile, downloadCSVFileService } from '../../service/migration/MigrationService'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -17,9 +17,9 @@ function getToken() {
 onBeforeMount(async () => {
   initFilters()
   try {
-    files.value = await MigrateGetAddress()
+    files.value = await MigrateGetService()
   } catch (err) {
-    alert('❌ From Fontend onBeforeMount Failed to load MigrateGetAddress:', err.message)
+    alert('❌ From Fontend onBeforeMount Failed to load MigrateGetService:', err.message)
   } finally {
     loading.value = false
   }
@@ -36,7 +36,7 @@ async function handleFileUpload(event) {
     alert(`From fontend handleFileUpload Upload success: ${data.message || 'File uploaded'}`)
 
     // โหลดข้อมูลใหม่หลัง upload เสร็จ
-    files.value = await MigrateGetAddress()
+    files.value = await MigrateGetService()
   } catch (err) {
     alert(`From Frontend : handleFileUpload -> Upload failed: ${err.message}`)
   } finally {
@@ -64,7 +64,7 @@ async function exportRowCSV(row) {
   try {
     loading.value = true
     const token = getToken()
-    const blob = await downloadCSVFileAddress(row.id, token)
+    const blob = await downloadCSVFileService(row.id, token)
 
     // ตั้งชื่อไฟล์ ตาม filename ต้นฉบับ + timestamp
     const baseName = row.filename ? row.filename.replace(/\.[^/.]+$/, '') : 'export'
@@ -109,8 +109,7 @@ function formatDateTime(value) {
 }
 
 async function onDetail(row) {
-    await router.push(`/migration/migration-address-detail/${row.id}`)
-    console.log('Navigation done')
+    await router.push(`/migration/migration-service-detail/${row.id}`)
 }
 
 function onDelete(row) {

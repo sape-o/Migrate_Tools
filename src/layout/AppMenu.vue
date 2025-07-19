@@ -30,7 +30,7 @@ const model = ref([
                     {
                         label: 'SERVICE',
                         icon: 'pi pi-fw pi-sign-in',
-                        to: '/auth/login'
+                        to: '/migration/migration-service'
                     },
                     {
                         label: 'SERVICE GROUP',

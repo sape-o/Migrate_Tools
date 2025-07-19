@@ -1,15 +1,20 @@
 <script setup>
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api'
 import { onBeforeMount, ref } from 'vue'
-import { MigrateGetService, uploadFile, downloadCSVFileService } from '../../service/migration/MigrationService'
+import { MigrateGetService, uploadFile, downloadCSVFileService, updateStatusDeleteService } from '../../service/migration/MigrationService'
 import { useRouter } from 'vue-router'
+import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
+import ConfirmDialog from 'primevue/confirmdialog'
 
 const router = useRouter()
+const confirm = useConfirm()
+const toast = useToast()
+
 const files = ref([])
 const filters = ref(null)
 const loading = ref(true)
-
-// ฟังก์ชันดึง token จาก localStorage (ปรับตามจริง)
+const selectedRow = ref(null)
 function getToken() {
   return localStorage.getItem('token') || ''
 }
@@ -19,7 +24,7 @@ onBeforeMount(async () => {
   try {
     files.value = await MigrateGetService()
   } catch (err) {
-    alert('❌ From Fontend onBeforeMount Failed to load MigrateGetService:', err.message)
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load files', life: 3000 })
   } finally {
     loading.value = false
   }
@@ -33,12 +38,10 @@ async function handleFileUpload(event) {
   loading.value = true
   try {
     const data = await uploadFile(file, token)
-    alert(`From fontend handleFileUpload Upload success: ${data.message || 'File uploaded'}`)
-
-    // โหลดข้อมูลใหม่หลัง upload เสร็จ
+    toast.add({ severity: 'success', summary: 'Upload Success', detail: data.message || 'File uploaded', life: 3000 })
     files.value = await MigrateGetService()
   } catch (err) {
-    alert(`From Frontend : handleFileUpload -> Upload failed: ${err.message}`)
+    toast.add({ severity: 'error', summary: 'Upload Failed', detail: err.message, life: 3000 })
   } finally {
     loading.value = false
   }
@@ -57,7 +60,7 @@ function getCurrentTimestamp() {
 
 async function exportRowCSV(row) {
   if (!row) {
-    alert('No data to export')
+    toast.add({ severity: 'warn', summary: 'Warning', detail: 'No data to export', life: 3000 })
     return
   }
 
@@ -65,13 +68,10 @@ async function exportRowCSV(row) {
     loading.value = true
     const token = getToken()
     const blob = await downloadCSVFileService(row.id, token)
-
-    // ตั้งชื่อไฟล์ ตาม filename ต้นฉบับ + timestamp
     const baseName = row.filename ? row.filename.replace(/\.[^/.]+$/, '') : 'export'
     const timestamp = getCurrentTimestamp()
     const fileName = `${baseName}_${timestamp}.csv`
 
-    // สร้างลิงก์ดาวน์โหลด
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -79,7 +79,7 @@ async function exportRowCSV(row) {
     link.click()
     URL.revokeObjectURL(url)
   } catch (error) {
-    alert(`From Frontend : exportRowCSV -> Failed to download CSV: ${error.message}`)
+    toast.add({ severity: 'error', summary: 'Download Failed', detail: error.message, life: 3000 })
   } finally {
     loading.value = false
   }
@@ -105,17 +105,45 @@ function formatDateTime(value) {
   const hours = String(date.getHours()).padStart(2, '0')
   const minutes = String(date.getMinutes()).padStart(2, '0')
   const seconds = String(date.getSeconds()).padStart(2, '0')
-  return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
+  return `${day}-${month}-${year}_${hours}-${minutes}-${seconds}`
 }
 
 async function onDetail(row) {
-    await router.push(`/migration/migration-service-detail/${row.id}`)
+  await router.push(`/migration/migration-service-detail/${row.id}`)
 }
 
-function onDelete(row) {
-  if (confirm(`Are you sure you want to delete file: ${row.filename} ?`)) {
-    console.log('Delete', row)
-    // เรียก API ลบ หรือโค้ดลบข้อมูล
+function confirmDelete(row) {
+  confirm.require({
+    message: `Do you want to delete "${row.filename}"?`,
+    header: 'Delete Confirmation',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Yes',
+    rejectLabel: 'No',
+    accept: () => onDelete(row)
+  })
+}
+
+async function onDelete(row) {
+  try {
+    const token = getToken()
+    loading.value = true
+    const res = await updateStatusDeleteService(row.id, token)
+    if (!res.ok) {
+      const errData = await res.json()
+      throw new Error(errData.message || 'Failed to delete file')
+    }
+
+    selectedRow.value = null // เคลียร์ selectedRow หลังลบสำเร็จ
+    files.value = files.value.filter(file => file.id !== row.id) // อัปเดตข้อมูลในตาราง
+
+    toast.add({ severity: 'success', summary: 'Deleted', detail: `File "${row.filename}" deleted`, life: 3000 })
+
+    // โหลดข้อมูลใหม่หลังลบเสร็จ
+    files.value = await MigrateGetService()
+  } catch (err) {
+    toast.add({ severity: 'error', summary: 'Error', detail: `Delete failed: ${err.message}`, life: 3000 })
+  } finally {
+    loading.value = false
   }
 }
 </script>
@@ -182,11 +210,12 @@ function onDelete(row) {
           <div class="action-buttons">
             <Button label="Detail" icon="pi pi-info-circle" text @click="onDetail(data)" />
             <Button label="Export CSV" icon="pi pi-file" text @click="exportRowCSV(data)" />
-            <Button label="Delete" icon="pi pi-trash" severity="danger" disabled text @click="onDelete(data)" />
+            <Button label="Delete" icon="pi pi-trash" severity="danger" text @click="confirmDelete(data)" />
           </div>
         </template>
       </Column>
     </DataTable>
+    <ConfirmDialog/>
   </div>
 </template>
 
@@ -197,14 +226,13 @@ function onDelete(row) {
 }
 .action-buttons {
   display: flex;
-  gap: 0.25rem; /* ระยะห่างเล็กๆ ระหว่างปุ่ม */
-  justify-content: center; /* จัดกึ่งกลางแนวนอน */
-  align-items: center; /* จัดกึ่งกลางแนวตั้ง */
+  gap: 0.25rem;
+  justify-content: center;
+  align-items: center;
 }
-
 .action-buttons >>> .p-button {
-  padding: 0.25rem 0.5rem; /* ลด padding ปุ่ม ให้เล็กลง */
-  font-size: 0.875rem; /* ขนาดตัวหนังสือเล็กลง */
-  min-width: auto; /* ไม่บังคับความกว้าง */
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  min-width: auto;
 }
 </style>

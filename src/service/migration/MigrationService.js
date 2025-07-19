@@ -49,3 +49,20 @@ export async function downloadCSVFileService(id, token) {
   const blob = await response.blob()
   return blob
 }
+
+export async function updateStatusDeleteService(id, status, token) {
+  const response = await fetch(`${API_URL}/migration/service-delete/${id}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.message || 'From Frontend .js : updateStatusDeleteService -> Failed to delete address')
+  }
+
+  return response
+}

@@ -14,6 +14,11 @@ const router = createRouter({
                     component: () => import('@/views/Dashboard.vue')
                 },
                 {
+                    path: '/tools/delete-metadata',
+                    name: 'DeleteMetadata',
+                    component: () => import('@/views/tools/DeleteMetaData.vue')
+                },
+                {
                     path: '/migration/migration-address',
                     name: 'migrationaddress',
                     component: () => import('@/views/migration/MigrationAddress.vue')
@@ -160,7 +165,7 @@ const router = createRouter({
         }
     ]
 });
-
+/*
 router.beforeEach((to, from, next) => {
   const publicPages = ['/auth/login', '/landing', '/auth/error', '/auth/access'];
   const authRequired = !publicPages.includes(to.path);
@@ -172,5 +177,5 @@ router.beforeEach((to, from, next) => {
 
   next();
 });
-
+*/
 export default router

@@ -6,7 +6,13 @@ import AppMenuItem from './AppMenuItem.vue';
 const model = ref([
     {
         label: 'Home',
-        items: [{ label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/' }]
+        items: [{ label: '-DEV-Dashboard', icon: 'pi pi-fw pi-home', to: '/' }]
+    },
+    {
+        label: 'TOOLS',
+        items: [
+            { label: 'DEL META DATA', icon: 'pi pi-fw pi-id-card', to: '/tools/delete-metadata' },
+        ]
     },
     {
         label: 'ENGINEER',
@@ -23,9 +29,9 @@ const model = ref([
                         to: '/migration/migration-address'
                     },
                     {
-                        label: 'ADDRESS GROUP',
+                        label: '-DEV-ADDRESS GROUP',
                         icon: 'pi pi-fw pi-times-circle',
-                        to: '/auth/error'
+                        to: '/auth/error',
                     },
                     {
                         label: 'SERVICE',
@@ -33,12 +39,12 @@ const model = ref([
                         to: '/migration/migration-service'
                     },
                     {
-                        label: 'SERVICE GROUP',
+                        label: '-DEV-SERVICE GROUP',
                         icon: 'pi pi-fw pi-times-circle',
                         to: '/auth/error'
                     },
                     {
-                        label: 'POLICY',
+                        label: '-DEV-POLICY',
                         icon: 'pi pi-fw pi-lock',
                         to: '/auth/access'
                     }
@@ -49,15 +55,15 @@ const model = ref([
     {
         label: 'CHANGE',
         items: [
-            { label: 'CHANGE REQUEST', icon: 'pi pi-fw pi-id-card', to: '/uikit/formlayout' },
-            { label: 'CHANGE APPROVE', icon: 'pi pi-fw pi-check-square', to: '/uikit/input' },
+            { label: '-DEV-CHANGE REQUEST', icon: 'pi pi-fw pi-id-card', to: '/uikit/formlayout' },
+            { label: '-DEV-CHANGE APPROVE', icon: 'pi pi-fw pi-check-square', to: '/uikit/input' },
         ]
     },
         {
         label: 'ADMIN OFFICER',
         items: [
-            { label: 'CHANGE REQUEST', icon: 'pi pi-fw pi-id-card', to: '/uikit/formlayout' },
-            { label: 'CHANGE APPROVE', icon: 'pi pi-fw pi-check-square', to: '/uikit/input' },
+            { label: '-DEV-CHANGE REQUEST', icon: 'pi pi-fw pi-id-card', to: '/uikit/formlayout' },
+            { label: '-DEV-CHANGE APPROVE', icon: 'pi pi-fw pi-check-square', to: '/uikit/input' },
         ]
     },
     {
@@ -73,48 +79,48 @@ const model = ref([
                         to: '/root/users'
                     },
                     {
-                        label: 'USER PRIVILEGE',
+                        label: '-DEV-USER PRIVILEGE',
                         icon: 'pi pi-fw pi-times-circle',
                         to: '/auth/error'
                     },
                 ]
             },
             {
-                label: 'MIGRATE',
+                label: '-DEV-MIGRATE',
                 icon: 'pi pi-fw pi-bookmark',
                 items: [
                     {
                         label: 'MIGRATE 1.1',
                         icon: 'pi pi-fw pi-bookmark',
                         items: [
-                            { label: 'MIGRATE 1.1.1', icon: 'pi pi-fw pi-bookmark' },
-                            { label: 'MIGRATE 1.1.2', icon: 'pi pi-fw pi-bookmark' },
-                            { label: 'MIGRATE 1.1.3', icon: 'pi pi-fw pi-bookmark' }
+                            { label: '-DEV-MIGRATE 1.1.1', icon: 'pi pi-fw pi-bookmark' },
+                            { label: '-DEV-MIGRATE 1.1.2', icon: 'pi pi-fw pi-bookmark' },
+                            { label: '-DEV-MIGRATE 1.1.3', icon: 'pi pi-fw pi-bookmark' }
                         ]
                     },
                     {
-                        label: 'MIGRATE 1.2',
+                        label: '-DEV-MIGRATE 1.2',
                         icon: 'pi pi-fw pi-bookmark',
-                        items: [{ label: 'MIGRATE 1.2.1', icon: 'pi pi-fw pi-bookmark' }]
+                        items: [{ label: '-DEV-MIGRATE 1.2.1', icon: 'pi pi-fw pi-bookmark' }]
                     }
                 ]
             },
             {
-                label: 'CHANGE',
+                label: '-DEV-CHANGE',
                 icon: 'pi pi-fw pi-bookmark',
                 items: [
                     {
-                        label: 'CHANGE 2.1',
+                        label: '-DEV-CHANGE 2.1',
                         icon: 'pi pi-fw pi-bookmark',
                         items: [
-                            { label: 'CHANGE 2.1.1', icon: 'pi pi-fw pi-bookmark' },
-                            { label: 'CHANGE 2.1.2', icon: 'pi pi-fw pi-bookmark' }
+                            { label: '-DEV-CHANGE 2.1.1', icon: 'pi pi-fw pi-bookmark' },
+                            { label: '-DEV-CHANGE 2.1.2', icon: 'pi pi-fw pi-bookmark' }
                         ]
                     },
                     {
-                        label: 'CHANGE 2.2',
+                        label: '-DEV-CHANGE 2.2',
                         icon: 'pi pi-fw pi-bookmark',
-                        items: [{ label: 'CHANGE 2.2.1', icon: 'pi pi-fw pi-bookmark' }]
+                        items: [{ label: '-DEV-CHANGE 2.2.1', icon: 'pi pi-fw pi-bookmark' }]
                     }
                 ]
             }
@@ -168,4 +174,6 @@ const model = ref([
     </ul>
 </template>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+
+</style>

@@ -11,7 +11,7 @@ function startProgress() {
             newValue = 100;
         }
         value.value = newValue;
-    }, 2000);
+    }, 200);
 }
 
 function endProgress() {

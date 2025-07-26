@@ -29,9 +29,9 @@ const model = ref([
                         to: '/migration/migration-address'
                     },
                     {
-                        label: '-DEV-ADDRESS GROUP',
-                        icon: 'pi pi-fw pi-times-circle',
-                        to: '/auth/error',
+                        label: 'ADDRESS GROUP',
+                        icon: 'pi pi-fw pi-sign-in',
+                        to: '/migration/migration-address-group',
                     },
                     {
                         label: 'SERVICE',
@@ -39,14 +39,14 @@ const model = ref([
                         to: '/migration/migration-service'
                     },
                     {
-                        label: '-DEV-SERVICE GROUP',
-                        icon: 'pi pi-fw pi-times-circle',
-                        to: '/auth/error'
+                        label: 'SERVICE GROUP',
+                        icon: 'pi pi-fw pi-sign-in',
+                        to: '/migration/migration-service-group'
                     },
                     {
                         label: '-DEV-POLICY',
-                        icon: 'pi pi-fw pi-lock',
-                        to: '/auth/access'
+                        icon: 'pi pi-fw pi-sign-in',
+                        to: '/migration/migration-policy'
                     }
                 ]
             },
@@ -79,7 +79,7 @@ const model = ref([
                         to: '/root/users'
                     },
                     {
-                        label: '-DEV-USER PRIVILEGE',
+                        label: '-DEV-USER ENTITY',
                         icon: 'pi pi-fw pi-times-circle',
                         to: '/auth/error'
                     },

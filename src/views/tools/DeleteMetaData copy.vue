@@ -1,6 +1,6 @@
 <script setup>
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api'
-import { onBeforeMount, onMounted, onBeforeUnmount, ref } from 'vue'
+import { onBeforeMount, ref } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import ConfirmDialog from 'primevue/confirmdialog'
@@ -16,18 +16,14 @@ import { toolsUploadDeleteMetadata, updateStatusDeleteService, toolsDownloadMeta
 
 const confirm = useConfirm()
 const toast = useToast()
-const radioValue = ref(null)
-const colorValue = ref('#000000')
+const radioValue = ref(null);
 const files = ref([])
 const filters = ref(null)
 const loading = ref(true)
 const selectedRow = ref(null)
+const colorValue = ref('#000000') 
 const selectedFile = ref(null)
 const dialogVisible = ref(false)
-const coloropacity = ref(30)
-const value = ref(0);
-let interval = null;
-let intervalId = null
 
 function getToken() {
   return localStorage.getItem('token') || ''
@@ -44,77 +40,17 @@ onBeforeMount(async () => {
   }
 })
 
-onMounted(() => {
-  intervalId = setInterval(async () => {
-    try {
-      files.value = await fetchDeleteMetadata()
-    } catch (err) {
-      console.error('Interval fetch error:', err)
-    }
-  }, 8000) // 8 วินาที
-})
-
-onBeforeUnmount(() => {
-  if (intervalId) clearInterval(intervalId)
-  endProgress()
-  selectedFile.value = null
-  radioValue.value = null
-  colorValue.value = '#000000'
-  coloropacity.value = 30
-  filters.value = null
-  value.value = 0
-  dialogVisible.value = false
-  selectedRow.value = null
-  files.value = []
-  loading.value = true
-})
-
 function onDialogFileSelected(event) {
-  const file = event.target?.files?.[0] || null
+  const file = event.files?.[0] || null
   selectedFile.value = file
-  startProgress()
-  if (file) {
-    toast.add({
-      severity: 'info',
-      summary: 'File Selected',
-      detail: `Selected file: ${file.name}`,
-      life: 3000
-    })
-  } else {
-    toast.add({
-      severity: 'warn',
-      summary: 'No File Selected',
-      detail: 'Please select a file to upload.',
-      life: 3000
-    })
-  }
 }
-
 async function uploadSelectedFile() {
-  
   const file = selectedFile.value
   if (!file) {
     toast.add({
       severity: 'warn',
       summary: 'No File Selected',
       detail: 'Please select a file before uploading.',
-      life: 3000
-    })
-    return
-  }
-  if(radioValue.value === null) {
-    toast.add({
-      severity: 'warn',
-      summary: 'No Action Selected',
-      detail: 'Please select an action before uploading.',
-      life: 3000
-    })
-    return
-  } else if (radioValue.value === 'colorhighlight' && !colorValue.value) {
-    toast.add({
-      severity: 'warn',
-      summary: 'No Color Selected',
-      detail: 'Please select a color for ColorHighlight action.',
       life: 3000
     })
     return
@@ -137,22 +73,43 @@ async function uploadSelectedFile() {
 
   loading.value = true
   try {
-    
-    dialogVisible.value = false
-    endProgress()
     const token = getToken()
-
-    let action = radioValue.value
-    let opacity = coloropacity.value / 100 // Convert to decimal for opacity
-    if (action === 'colorhighlight') {
-      action = `highlight_${colorValue.value}`
-    }
-
-    const data = await toolsUploadDeleteMetadata(file, action, opacity, token)
+    const data = await toolsUploadDeleteMetadata(file, token)
     toast.add({ severity: 'success', summary: 'Upload Success', detail: data.message || 'File uploaded', life: 3000 })
     files.value = await fetchDeleteMetadata()
     selectedFile.value = null // reset file
-    
+  } catch (err) {
+    toast.add({ severity: 'error', summary: 'Upload Failed', detail: err.message || err, life: 3000 })
+  } finally {
+    loading.value = false
+  }
+}
+
+async function handleFileUpload(event) {
+  const file = event.target.files[0]
+  if (!file) return
+
+  // เช็คนามสกุลไฟล์ที่อนุญาต
+  const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']
+  const fileExtension = file.name.split('.').pop().toLowerCase()
+
+  if (!allowedExtensions.includes(fileExtension)) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Invalid File',
+      detail: `Only PDF, Word, Excel, and PowerPoint files are allowed. You tried to upload a .${fileExtension} file.`,
+      life: 4000
+    })
+    event.target.value = ''
+    return
+  }
+
+  loading.value = true
+  try {
+    const token = getToken()
+    const data = await toolsUploadDeleteMetadata(file, token)
+    toast.add({ severity: 'success', summary: 'Upload Success', detail: data.message || 'File uploaded', life: 3000 })
+    files.value = await fetchDeleteMetadata()
   } catch (err) {
     toast.add({ severity: 'error', summary: 'Upload Failed', detail: err.message || err, life: 3000 })
   } finally {
@@ -203,27 +160,10 @@ async function Download(row) {
   }
 }
 
-function startProgress() {
-    interval = setInterval(() => {
-        let newValue = value.value + Math.floor(Math.random() * 10) + 1
-        if (newValue >= 100) {
-            newValue = 100
-        }
-        value.value = newValue
-    }, 30)
-}
-
-function endProgress() {
-    clearInterval(interval)
-    interval = null
-    value.value = 0
-}
-
 function initFilters() {
   filters.value = {
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    file_name: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
-    todo: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] }
+    file_name: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] }
   }
 }
 
@@ -268,12 +208,6 @@ async function onDelete(row) {
 
 function onDialogCancel() {
   dialogVisible.value = false
-  endProgress()
-  selectedFile.value = null
-  radioValue.value = null
-  colorValue.value = '#000000'
-  coloropacity.value = 30
-
 }
 
 </script>
@@ -284,20 +218,22 @@ function onDialogCancel() {
     <DataTable
       :value="files"
       :paginator="true"
-      :rows="10"
+      :rows="20"
       dataKey="id"
       :rowHover="true"
       v-model:filters="filters"
       filterDisplay="menu"
       :loading="loading"
       :filters="filters"
-      :globalFilterFields="['file_name','todo']"
+      :globalFilterFields="['file_name']"
       showGridlines
       responsiveLayout="scroll"
     >
       <template #header>
         <div class="flex justify-between items-center gap-3">
-          <Button label="UPLOAD FILE" icon="pi pi-upload" @click="dialogVisible = true" />
+          <Button label="Upload File" icon="pi pi-upload" @click="$refs.fileInput.click()" />
+          <Button label="Dialog" icon="pi pi-upload" @click="dialogVisible = true" />
+          <input type="file" ref="fileInput" class="hidden" @change="handleFileUpload" />
           <IconField>
             <InputIcon>
               <i class="pi pi-search" />
@@ -327,8 +263,7 @@ function onDialogCancel() {
       <Column header="Action" style="min-width: 16rem" bodyClass="text-center">
         <template #body="{ data }">
           <div class="action-buttons">
-            <Button label="Original" icon="pi pi-file" text disabled="DownloadOriginal(data)" />
-            <Button label="Converted" icon="pi pi-file" text @click="Download(data)" />
+            <Button label="Download" icon="pi pi-file" text @click="Download(data)" />
             <Button label="Delete" icon="pi pi-trash" severity="danger" text @click="confirmDelete(data)" />
           </div>
         </template>
@@ -341,70 +276,52 @@ function onDialogCancel() {
       modal
       :style="{ width: '90vw', maxWidth: '500px' }"
     >
-    <!-- Radio Button Group -->
-      <div class="flex flex-col gap-4">
-        <label class="ml-0 sm:ml-2">What Do You Want To Do?</label>
-        <!-- Option 1 -->
-        <div class="flex flex-col sm:flex-row sm:items-center gap-2">
-          <RadioButton id="option1" name="option" value="metadata" v-model="radioValue" />
-          <label for="option1" class="ml-0 sm:ml-2">Metadata</label>
-        </div>
-
-        <!-- Option 2 -->
-        <div class="flex flex-col sm:flex-row sm:items-center gap-2">
-          <RadioButton id="option2" name="option" value="highlight_author" v-model="radioValue" />
-          <label for="option2" class="ml-0 sm:ml-2">Highlight Author</label>
-        </div>
-
-        <!-- Option 3 -->
-        <div class="flex flex-col sm:flex-row sm:items-center gap-2">
-          <RadioButton id="option3" name="option" value="colorhighlight" v-model="radioValue"/>
-          <label for="option3" class="ml-0 sm:ml-2" :style="{ color: colorValue }">ColorHighlight</label>
-          <ColorPicker format="hex" style="width: 2rem" v-model="colorValue" />
-        </div>
-      </div>
-      <!-- Option 3 -->
-      <Transition name="fade">
-        <div v-if="radioValue === 'colorhighlight'" class="flex flex-col sm:flex-row sm:items-center gap-2">
-          <div class="font-semibold text-xl">Color Opacity</div>
-          <Knob v-model="coloropacity" :step="1" :min="1" :max="100" valueTemplate="{value}%" />
-        </div>
-      </Transition>
-      
-      
       <div class="p-4 space-y-4">
-        <div class="flex flex-col md:flex-row gap-4">
-          <div class="flex-1">
-            <ProgressBar :value="value"></ProgressBar>
-          </div>
-        </div>
         <!-- File Upload -->
-        <input
-          ref="customFileInput"
-          type="file"
-          :accept="radioValue === 'metadata'
-            ? '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx'
-            : '.pdf'"
-          class="hidden"
-          @change="onDialogFileSelected"
-        />
-        <Button
-          icon="pi pi-upload"
-          label="Choose File"
-          @click="$refs.customFileInput.click()"
-        />
-        <div v-if="selectedFile" class="text-sm text-gray-600 truncate mt-1">
-          Selected file: {{ selectedFile.name }}
+      <input
+        ref="customFileInput"
+        type="file"
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+        class="hidden"
+        @change="onDialogFileSelected"
+      />
+      <Button
+        icon="pi pi-upload"
+        label="Choose File"
+        @click="$refs.customFileInput.click()"
+      />
+      <div v-if="selectedFile" class="text-sm text-gray-600 truncate mt-1">
+        Selected file: {{ selectedFile.name }}
+      </div>
+
+        <!-- Radio Button Group -->
+        <div class="flex flex-col gap-4">
+          <label for="option1" class="ml-0 sm:ml-2">What Do You Want To Do?</label>
+          <!-- Option 1 -->
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+            <RadioButton id="option1" name="option" value="Chicago" v-model="radioValue" />
+            <label for="option1" class="ml-0 sm:ml-2">Metadata</label>
+          </div>
+
+          <!-- Option 2 -->
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+            <RadioButton id="option2" name="option" value="Los Angeles" v-model="radioValue" />
+            <label for="option2" class="ml-0 sm:ml-2">Highlight Author</label>
+          </div>
+
+          <!-- Option 3 -->
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+            <RadioButton id="option3" name="option" value="New York" v-model="radioValue" disabled />
+            <label for="option3" class="ml-0 sm:ml-2" :style="{ color: colorValue }">ColorHighlight</label>
+            <ColorPicker format="hex" style="width: 2rem" v-model="colorValue" />
+          </div>
         </div>
 
-          
-          
-
-          <!-- Action Buttons -->
-          <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-4">
-            <Button label="Cancel" text @click="onDialogCancel" />
-            <Button label="Upload" @click="uploadSelectedFile" />
-          </div>
+        <!-- Action Buttons -->
+        <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-4">
+          <Button label="Cancel" text @click="onDialogCancel" />
+          <Button label="Upload" @click="uploadSelectedFile" />
+        </div>
       </div>
     </Dialog>
 
@@ -427,11 +344,5 @@ function onDialogCancel() {
   padding: 0.25rem 0.5rem;
   font-size: 0.875rem;
   min-width: auto;
-}
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
 }
 </style>

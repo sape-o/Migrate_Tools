@@ -23,10 +23,20 @@ const router = createRouter({
                     name: 'migrationaddress',
                     component: () => import('@/views/migration/MigrationAddress.vue')
                 },
-                                {
+                {
                     path: '/migration/migration-address-detail/:id',
                     name: 'migrationAddressDetail',
                     component: () => import('@/views/migration/MigrationAddressDetail.vue')
+                },
+                {
+                    path: '/migration/migration-address-group',
+                    name: 'migrationAddressGroup',
+                    component: () => import('@/views/migration/MigrationAddressGroup.vue')
+                },
+                {
+                    path: '/migration/migration-address-group-detail/:id',
+                    name: 'migrationAddressGroupDetail',
+                    component: () => import('@/views/migration/MigrationAddressGroupDetail.vue')
                 },
                 {
                     path: '/migration/migration-service',
@@ -37,6 +47,26 @@ const router = createRouter({
                     path: '/migration/migration-service-detail/:id',
                     name: 'migrationServiceDetail',
                     component: () => import('@/views/migration/MigrationServiceDetail.vue')
+                },
+                {
+                    path: '/migration/migration-service-group',
+                    name: 'migrationServiceGroup',
+                    component: () => import('@/views/migration/MigrationServiceGroup.vue')
+                },
+                {
+                    path: '/migration/migration-service-group-detail/:id',
+                    name: 'migrationServiceGroupDetail',
+                    component: () => import('@/views/migration/MigrationServiceGroupDetail.vue')
+                },
+                {
+                    path: '/migration/migration-policy',
+                    name: 'migrationPolicy',
+                    component: () => import('@/views/migration/MigrationPolicy.vue')
+                },
+                {
+                    path: '/migration/migration-policy-detail/:id',
+                    name: 'migrationPolicyDetail',
+                    component: () => import('@/views/migration/MigrationPolicyDetail.vue')
                 },
                 {
                     path: '/root/users',

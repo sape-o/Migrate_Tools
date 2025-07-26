@@ -1,16 +1,16 @@
 <script setup>
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api'
-import { onBeforeMount, onMounted, onBeforeUnmount, ref } from 'vue'
+import { onBeforeMount, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import ConfirmDialog from 'primevue/confirmdialog'
 import {
-  MigrateGetAddress,
+  MigrateGetServiceGroup,
   uploadFile,
-  downloadCSVFileAddress,
-  updateStatusDeleteAddress
-} from '../../service/migration/MigrationAddress'
+  downloadCSVFileServiceGroup,
+  updateStatusDeleteServiceGroup,
+} from '../../service/migration/MigrationServiceGroup'
 
 const router = useRouter()
 const confirm = useConfirm()
@@ -20,7 +20,6 @@ const files = ref([])
 const filters = ref(null)
 const loading = ref(true)
 const selectedRow = ref(null)
-let intervalId = null
 
 // ฟังก์ชันดึง token จาก localStorage (ปรับตามจริง)
 function getToken() {
@@ -30,25 +29,12 @@ function getToken() {
 onBeforeMount(async () => {
   initFilters()
   try {
-    files.value = await MigrateGetAddress()
+    files.value = await MigrateGetServiceGroup()
   } catch (err) {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load files', life: 5000 })
   } finally {
     loading.value = false
   }
-})
-onMounted(() => {
-  intervalId = setInterval(async () => {
-    try {
-      files.value = await MigrateGetAddress()
-    } catch (err) {
-      console.error('Interval fetch error:', err)
-    }
-  }, 5000) // 5 วินาที
-})
-
-onBeforeUnmount(() => {
-  if (intervalId) clearInterval(intervalId)
 })
 
 async function handleFileUpload(event) {
@@ -62,7 +48,7 @@ async function handleFileUpload(event) {
     toast.add({ severity: 'success', summary: 'Upload Success', detail: data.message || 'File uploaded', life: 3000 })
 
     // โหลดข้อมูลใหม่หลัง upload เสร็จ
-    files.value = await MigrateGetAddress()
+    files.value = await MigrateGetServiceGroup()
   } catch (err) {
     toast.add({ severity: 'error', summary: 'Upload Failed', detail: err.message, life: 3000 })
   } finally {
@@ -90,7 +76,7 @@ async function exportRowCSV(row) {
   try {
     loading.value = true
     const token = getToken()
-    const blob = await downloadCSVFileAddress(row.id, token)
+    const blob = await downloadCSVFileServiceGroup(row.id, token)
 
     const baseName = row.filename ? row.filename.replace(/\.[^/.]+$/, '') : 'export'
     const timestamp = getCurrentTimestamp()
@@ -133,7 +119,7 @@ function formatDateTime(value) {
 }
 
 async function onDetail(row) {
-  await router.push(`/migration/migration-address-detail/${row.id}`)
+  await router.push(`/migration/migration-service-group-detail/${row.id}`)
 }
 
 // ใช้ confirm dialog แบบ PrimeVue 3.40+ 
@@ -152,7 +138,7 @@ async function onDelete(row) {
   try {
     const token = getToken()
     loading.value = true
-    const res = await updateStatusDeleteAddress(row.id, token)
+    const res = await updateStatusDeleteServiceGroup(row.id, token)
     if (!res.ok) {
       const errData = await res.json()
       throw new Error(errData.message || 'Failed to delete file')
@@ -164,7 +150,7 @@ async function onDelete(row) {
     toast.add({ severity: 'success', summary: 'Deleted', detail: `File "${row.filename}" deleted`, life: 3000 })
 
     // โหลดข้อมูลใหม่หลังลบเสร็จ
-    files.value = await MigrateGetAddress()
+    files.value = await MigrateGetServiceGroup()
   } catch (err) {
     toast.add({ severity: 'error', summary: 'Error', detail: `Delete failed: ${err.message}`, life: 3000 })
   } finally {
@@ -175,7 +161,7 @@ async function onDelete(row) {
 
 <template>
   <div class="card">
-    <div class="font-semibold text-xl mb-4">Uploaded Files Address</div>
+    <div class="font-semibold text-xl mb-4">Uploaded Files Service Group</div>
     <DataTable
       :value="files"
       :paginator="true"
@@ -193,13 +179,7 @@ async function onDelete(row) {
       <template #header>
         <div class="flex justify-between">
           <Button label="Upload File" icon="pi pi-upload" @click="$refs.fileInput.click()" />
-          <input
-            type="file"
-            ref="fileInput"
-            class="hidden"
-            @change="handleFileUpload"
-            accept=".csv"
-          />
+          <input type="file" ref="fileInput" class="hidden" @change="handleFileUpload" accept=".csv"/>
           <IconField>
             <InputIcon>
               <i class="pi pi-search" />

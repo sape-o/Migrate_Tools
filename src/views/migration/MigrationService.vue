@@ -150,7 +150,7 @@ async function onDelete(row) {
 
 <template>
   <div class="card">
-    <div class="font-semibold text-xl mb-4">Uploaded Files</div>
+    <div class="font-semibold text-xl mb-4">Uploaded Files Service</div>
     <DataTable
       :value="files"
       :paginator="true"
@@ -168,7 +168,7 @@ async function onDelete(row) {
       <template #header>
         <div class="flex justify-between">
           <Button label="Upload File" icon="pi pi-upload" @click="$refs.fileInput.click()" />
-          <input type="file" ref="fileInput" class="hidden" @change="handleFileUpload" />
+          <input type="file" ref="fileInput" class="hidden" @change="handleFileUpload" accept=".csv"/>
           <IconField>
             <InputIcon>
               <i class="pi pi-search" />

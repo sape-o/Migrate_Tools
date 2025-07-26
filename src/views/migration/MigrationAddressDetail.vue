@@ -1,14 +1,38 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { MigrationDetailID } from '../../service/migration/MigrationAddressDetail'
 
+// Import PrimeVue components
+import Button from 'primevue/button'
+import Dropdown from 'primevue/dropdown'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import InputText from 'primevue/inputtext'
+import MultiSelect from 'primevue/multiselect'
+import Dialog from 'primevue/dialog'
+
 const route = useRoute()
+const router = useRouter()
 const id = route.params.id
 
 const rows = ref([])
 const headers = ref([])
+
 const rowsPerPage = ref(10)
+
+const allColumns = [
+  { field: 'name', header: 'Name' },
+  { field: 'location', header: 'Location' },
+  { field: 'type', header: 'Type' },
+  { field: 'address', header: 'Address' },
+  { field: 'tags', header: 'Tags' }
+]
+
+const visibleColumns = ref(
+  allColumns.filter(col => ['name', 'location', 'type', 'address'].includes(col.field))
+)
+
 const filters = ref({
   global: { value: null, matchMode: 'contains' },
   name: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
@@ -18,13 +42,48 @@ const filters = ref({
   tags: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] }
 })
 
-const filteredRows = ref([]) // แถวที่กรองแล้ว
+const filteredRows = ref([])
 
-// dialog control
 const exportDialogVisible = ref(false)
-const exportDialogType = ref('') // 'csv' หรือ 'commands'
+const exportDialogType = ref('')
 
-// ฟังก์ชันตั้งชื่อไฟล์แบบ Address_DD-MM-YYYY_HH-MM-SS
+// สำหรับเก็บข้อความค้นหาแบบ global
+const searchTerm = ref('')
+
+// debounce function
+function debounce(fn, delay) {
+  let timer = null
+  return function (...args) {
+    clearTimeout(timer)
+    timer = setTimeout(() => {
+      fn(...args)
+    }, delay)
+  }
+}
+
+// ฟังก์ชันกรองข้อมูลโดย global search term
+function filterRows() {
+  if (!searchTerm.value) {
+    filteredRows.value = rows.value.slice()
+  } else {
+    const term = searchTerm.value.toLowerCase()
+    filteredRows.value = rows.value.filter(row => {
+      return allColumns.some(col => {
+        const cell = (row[col.field] || '').toString().toLowerCase()
+        return cell.includes(term)
+      })
+    })
+  }
+}
+
+// ใช้ debounce กันพิมพ์เร็วเกินไป 300ms
+const debouncedFilterRows = debounce(filterRows, 300)
+
+// เรียก debounce เมื่อ input change
+function onSearchInput() {
+  debouncedFilterRows()
+}
+
 function getTimestampString() {
   const d = new Date()
   const day = String(d.getDate()).padStart(2, '0')
@@ -65,6 +124,7 @@ onMounted(async () => {
     filteredRows.value = rows.value.slice()
   } catch (err) {
     alert('Error loading CSV: ' + err.message)
+    router.push('/pages/empty')
   }
 })
 
@@ -104,7 +164,6 @@ function onPushAPI(row) {
   }
 }
 
-// ฟังก์ชันเปิด dialog ก่อน export CSV
 function confirmExportCSV() {
   if (filteredRows.value.length === 0) {
     alert('ไม่มีข้อมูลสำหรับส่งออก')
@@ -114,7 +173,6 @@ function confirmExportCSV() {
   exportDialogVisible.value = true
 }
 
-// ฟังก์ชันเปิด dialog ก่อน export Commands
 function confirmExportCommands() {
   if (filteredRows.value.length === 0) {
     alert('ไม่มีข้อมูลสำหรับส่งออก')
@@ -124,7 +182,6 @@ function confirmExportCommands() {
   exportDialogVisible.value = true
 }
 
-// ฟังก์ชัน export CSV จริง ๆ
 function exportCSV() {
   const csvContent = [
     headers.value.join(','),
@@ -143,7 +200,6 @@ function exportCSV() {
   exportDialogVisible.value = false
 }
 
-// ฟังก์ชัน export Commands จริง ๆ
 function exportCommands() {
   const commands = filteredRows.value.map(row => {
     const name = row.name || ''
@@ -162,10 +218,6 @@ function exportCommands() {
   exportDialogVisible.value = false
 }
 
-function onFilter(event) {
-  filteredRows.value = event.filteredValue || rows.value
-}
-
 function onDialogYes() {
   if (exportDialogType.value === 'csv') {
     exportCSV()
@@ -177,78 +229,79 @@ function onDialogYes() {
 function onDialogNo() {
   exportDialogVisible.value = false
 }
+
+function formatAddress(text) {
+  if (!text) return ''
+  return text.split(';').map(p => p.trim()).join('<br/>')
+}
 </script>
 
 <template>
   <div class="card">
-    <div class="font-semibold text-xl mb-4">Migration Address List</div>
+    <div class="font-semibold text-xl mb-4">Migration Address List Detail</div>
 
-    <div class="flex justify-between items-center flex-wrap mb-3 gap-2">
+    <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
       <Button icon="pi pi-filter-slash" label="Clear" outlined @click="initFilters" />
-      <div class="flex flex-grow justify-center items-center gap-2">
+
+      <div class="flex flex-grow justify-center items-center gap-2 min-w-[280px]">
         <InputText
-          v-model="filters.global.value"
+          v-model="searchTerm"
           placeholder="ค้นหา..."
           class="w-full max-w-lg"
+          @input="onSearchInput"
         />
         <span class="text-gray-600 text-sm whitespace-nowrap">ผลลัพธ์: {{ filteredRows.length }} รายการ</span>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
+        <!-- MultiSelect เลือกคอลัมน์ -->
+        <MultiSelect
+          v-model="visibleColumns"
+          :options="allColumns"
+          optionLabel="header"
+          placeholder="เลือกคอลัมน์"
+          class="w-48"
+          display="chip"
+          :maxSelectedLabels="2"
+        />
+
+        <!-- Dropdown เลือก Rows per page -->
         <Dropdown
           :options="rowsPerPageOptions"
           v-model="rowsPerPage"
           optionLabel="label"
           optionValue="value"
           placeholder="Rows per page"
-          class="w-36"
+          class="w-28"
         />
+
+        <!-- ปุ่มเดิม -->
         <Button label="Export Filter CSV" icon="pi pi-file" @click="confirmExportCSV" />
         <Button label="Export Filter Commands" icon="pi pi-code" @click="confirmExportCommands" />
       </div>
     </div>
 
     <DataTable
-      :value="rows"
+      :value="filteredRows"
       :paginator="true"
       :rows="rowsPerPage"
       dataKey="id"
       :rowHover="true"
-      v-model:filters="filters"
       filterDisplay="menu"
-      :filters="filters"
-      :globalFilterFields="['name', 'location', 'type', 'address', 'tags']"
       showGridlines
       responsiveLayout="scroll"
-      @filter="onFilter"
+      class="min-w-full"
     >
-      <Column field="name" header="Name" style="min-width: 150px">
-        <template #filter="{ filterModel }">
-          <InputText v-model="filterModel.value" placeholder="Search Name" />
-        </template>
-      </Column>
-
-      <Column field="location" header="Location" style="min-width: 150px">
-        <template #filter="{ filterModel }">
-          <InputText v-model="filterModel.value" placeholder="Search Location" />
-        </template>
-      </Column>
-
-      <Column field="type" header="Type" style="min-width: 120px">
-        <template #filter="{ filterModel }">
-          <InputText v-model="filterModel.value" placeholder="Search Type" />
-        </template>
-      </Column>
-
-      <Column field="address" header="Address" style="min-width: 250px">
-        <template #filter="{ filterModel }">
-          <InputText v-model="filterModel.value" placeholder="Search Address" />
-        </template>
-      </Column>
-
-      <Column field="tags" header="Tags" style="min-width: 150px">
-        <template #filter="{ filterModel }">
-          <InputText v-model="filterModel.value" placeholder="Search Tags" />
+      <Column
+        v-for="col in visibleColumns"
+        :key="col.field"
+        :field="col.field"
+        :header="col.header"
+        :style="{ maxWidth: '200px', wordBreak: 'break-word', whiteSpace: 'normal' }"
+      >
+        <template #body="{ data }">
+          <span v-if="col.field === 'address'" v-html="formatAddress(data[col.field])"></span>
+          <span v-else>{{ data[col.field] }}</span>
         </template>
       </Column>
 
@@ -256,13 +309,7 @@ function onDialogNo() {
         <template #body="{ data }">
           <div class="flex gap-2 justify-center">
             <Button label="CLI" icon="pi pi-code" @click="handleCLI(data)" />
-            <Button
-              label="PUSH API"
-              icon="pi pi-send"
-              severity="danger"
-              disabled
-              @click="onPushAPI(data)"
-            />
+            <Button label="PUSH API" icon="pi pi-send" severity="danger" disabled @click="onPushAPI(data)" />
           </div>
         </template>
       </Column>

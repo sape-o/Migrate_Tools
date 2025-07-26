@@ -10,10 +10,13 @@ export async function fetchDeleteMetadata() {
   return await res.json()
 }
 
+
 // อัพโหลดไฟล์
-export async function toolsUploadDeleteMetadata(file, token) {
+export async function toolsUploadDeleteMetadata(file, action, opacity, token) {
   const formData = new FormData()
   formData.append('file', file)
+  formData.append('todo', action)
+  formData.append('opacity', opacity) // เพิ่มค่า opacity
   const res = await fetch(`${API_URL}/tools/delete-metadata`, {
     method: 'POST',
     headers: {

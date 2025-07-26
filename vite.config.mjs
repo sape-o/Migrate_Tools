@@ -20,5 +20,10 @@ export default defineConfig({
         alias: {
             '@': fileURLToPath(new URL('./src', import.meta.url))
         }
-    }
+    },
+    server: {
+    host: true,       // ให้เข้าถึงจากเครื่องอื่นได้
+    port: 80          // รันบนพอร์ต 80
+  }
+    
 });

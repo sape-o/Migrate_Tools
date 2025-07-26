@@ -1,8 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { MigrationDetailID } from '../../service/migration/MigrationAddressDetail'
+import { MigrationDetailID } from '../../service/migration/MigrationAddressGroupDetail.js'
 
+// route param id
 const route = useRoute()
 const id = route.params.id
 
@@ -10,32 +11,34 @@ const rows = ref([])
 const headers = ref([])
 const rowsPerPage = ref(10)
 
-// กำหนด columns ทั้งหมด เพื่อใช้ MultiSelect และแสดงผล
+// กำหนด columns ทั้งหมด
 const allColumns = [
   { field: 'name', header: 'Name', minWidth: '150px' },
   { field: 'location', header: 'Location', minWidth: '150px' },
-  { field: 'protocol', header: 'Protocol', minWidth: '120px' },
-  { field: 'destination_port', header: 'Destination Port', minWidth: '120px' }
+  { field: 'members_count', header: 'Member Count', minWidth: '120px' },
+  { field: 'addresses', header: 'Addresses', minWidth: '250px' },
+  { field: 'tags', header: 'Tags', minWidth: '150px' }
 ]
 
 // เริ่มต้นให้แสดงทุกคอลัมน์
-const visibleColumns = ref([...allColumns])
-
+//const visibleColumns = ref([...allColumns])
+const visibleColumns = ref(
+  allColumns.filter(col => ['name', 'location', 'members_count', 'addresses'].includes(col.field))
+)
 const filters = ref({
   global: { value: null, matchMode: 'contains' },
   name: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
   location: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
-  protocol: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
-  destination_port: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] }
+  members_count: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
+  addresses: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
+  tags: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] }
 })
 
-const filteredRows = ref([])
-
-// dialog control
+const filteredRows = ref([]) // แถวที่กรองแล้ว
 const exportDialogVisible = ref(false)
 const exportDialogType = ref('') // 'csv' หรือ 'commands'
 
-// ตั้งชื่อไฟล์แบบ Address_DD-MM-YYYY_HH-MM-SS
+// ฟังก์ชันตั้งชื่อไฟล์แบบ Address_DD-MM-YYYY_HH-MM-SS
 function getTimestampString() {
   const d = new Date()
   const day = String(d.getDate()).padStart(2, '0')
@@ -68,13 +71,13 @@ onMounted(async () => {
     rows.value = parsed.slice(1).map(row => {
       const obj = {}
       headers.value.forEach((h, i) => {
-        obj[h.toLowerCase().replace(/ /g, '_')] = row[i]
+        const key = h.toLowerCase().replace(/\s+/g, '_') // เช่น "Member Count" → "member_count"
+        obj[key] = row[i]
       })
-      obj.id = Math.random().toString(36).substring(2, 9)
+      obj.id = row[0] || Math.random().toString(36).substring(2, 9)
       return obj
     })
-
-    filteredRows.value = [...rows.value]
+    filteredRows.value = rows.value.slice()
   } catch (err) {
     alert('Error loading CSV: ' + err.message)
   }
@@ -95,6 +98,23 @@ function parseCSV(text) {
       cell.replace(/^"|"$/g, '').trim()
     )
   )
+}
+
+function handleCLI(row) {
+  const name = row.name
+  const addresses = row.addresses
+  if (!name || !addresses) {
+    alert('Missing required fields: Name / Addresses')
+    return
+  }
+
+  const message = `add name ${name} addresses ${addresses}`
+  alert(message)
+}
+function onPushAPI(row) {
+  if (confirm(`Are you sure you want to push API for: ${row.name || row.id}?`)) {
+    alert(`Pushed API for ${row.name || row.id} (not really implemented)`)
+  }
 }
 
 // ฟังก์ชันเปิด dialog ก่อน export CSV
@@ -119,14 +139,10 @@ function confirmExportCommands() {
 
 // ฟังก์ชัน export CSV จริง ๆ
 function exportCSV() {
-  // ใช้ visibleColumns เพื่อ export เฉพาะคอลัมน์ที่เลือกแสดง
-  const selectedHeaders = visibleColumns.value.map(c => c.header)
-  const selectedFields = visibleColumns.value.map(c => c.field)
-
   const csvContent = [
-    selectedHeaders.join(','),
+    headers.value.join(','),
     ...filteredRows.value.map(row =>
-      selectedFields.map(f => `"${row[f] || ''}"`).join(',')
+      headers.value.map(h => `"${row[h.toLowerCase().replace(/\s+/g, '_')] || ''}"`).join(',')
     )
   ].join('\n')
 
@@ -134,7 +150,7 @@ function exportCSV() {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `Address_${getTimestampString()}.csv`
+  link.download = `Address_Filter_${getTimestampString()}.csv`
   link.click()
   URL.revokeObjectURL(url)
   exportDialogVisible.value = false
@@ -143,48 +159,26 @@ function exportCSV() {
 // ฟังก์ชัน export Commands จริง ๆ
 function exportCommands() {
   const commands = filteredRows.value.map(row => {
-    // export เฉพาะคอลัมน์ที่แสดง และจัดรูปแบบเหมาะสม
-    // ตัวอย่าง: ถ้าแสดงชื่อ, protocol, port ให้ใช้คำสั่ง add name ... protocol ... destinationport ...
-    // เราจะตรวจสอบว่าคอลัมน์ visibleColumns มี field ไหน แล้วเรียงในคำสั่งตามนั้น
-    const parts = []
-    visibleColumns.value.forEach(col => {
-      const val = row[col.field] || ''
-      // แปลง field เป็นรูปแบบคำสั่ง เช่น name, protocol, destinationport (lowercase no underscore)
-      let cmdField = col.field.toLowerCase().replace(/_/g, '')
-      parts.push(`${cmdField} ${val}`)
-    })
-    return `add ${parts.join(' ')}`
+    const name = row.name || ''
+    const type = row.type || ''
+    const address = row.address || ''
+    return `add name ${name} type ${type} address ${address}`
   }).join('\n')
 
   const blob = new Blob([commands], { type: 'text/plain;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `Address_Commands_${getTimestampString()}.txt`
+  link.download = `Address_${getTimestampString()}.txt`
   link.click()
   URL.revokeObjectURL(url)
   exportDialogVisible.value = false
-}
-
-function handleCLI(row) {
-  const name = row.name || ''
-  const protocol = row.protocol || ''
-  const destinationPort = row.destination_port || ''
-
-  if (!name || !protocol || !destinationPort) {
-    alert('Missing required fields: Name / Protocol / Destination Port')
-    return
-  }
-
-  const message = `add name ${name} protocol ${protocol} Destinationport ${destinationPort}`
-  alert(message)
 }
 
 function onFilter(event) {
   filteredRows.value = event.filteredValue || rows.value
 }
 
-// dialog ปุ่ม Yes กดแล้ว export
 function onDialogYes() {
   if (exportDialogType.value === 'csv') {
     exportCSV()
@@ -193,7 +187,6 @@ function onDialogYes() {
   }
 }
 
-// dialog ปุ่ม No กดแล้วปิด dialog
 function onDialogNo() {
   exportDialogVisible.value = false
 }
@@ -201,13 +194,17 @@ function onDialogNo() {
 
 <template>
   <div class="card">
-    <div class="font-semibold text-xl mb-4">Migration Service Detail List</div>
+    <div class="font-semibold text-xl mb-4">Migration Address Group Detail List</div>
 
     <div class="flex justify-between items-center flex-wrap mb-3 gap-2">
       <Button icon="pi pi-filter-slash" label="Clear" outlined @click="initFilters" />
 
       <div class="flex flex-grow justify-center items-center gap-2">
-        <InputText v-model="filters.global.value" placeholder="ค้นหา..." class="w-full max-w-lg" />
+        <InputText
+          v-model="filters.global.value"
+          placeholder="ค้นหา..."
+          class="w-full max-w-lg"
+        />
         <span class="text-gray-600 text-sm whitespace-nowrap">ผลลัพธ์: {{ filteredRows.length }} รายการ</span>
       </div>
 
@@ -245,9 +242,10 @@ function onDialogNo() {
       v-model:filters="filters"
       filterDisplay="menu"
       :filters="filters"
-      :globalFilterFields="allColumns.map(c => c.field)"
+      :globalFilterFields="['name', 'location', 'members_count', 'addresses', 'tags']"
       showGridlines
       responsiveLayout="scroll"
+      scrollable
       @filter="onFilter"
     >
       <Column
@@ -259,6 +257,21 @@ function onDialogNo() {
       >
         <template #filter="{ filterModel }">
           <InputText v-model="filterModel.value" :placeholder="`Search ${col.header}`" />
+        </template>
+
+        <template #body="{ data }">
+          <div
+            v-if="col.field !== 'addresses'"
+            style="white-space: nowrap; overflow-x: auto; text-overflow: ellipsis;"
+          >
+            {{ data[col.field] }}
+          </div>
+          <div
+            v-else
+            class="address-cell"
+            v-html="data.addresses ? data.addresses.split(';').map(item => item.trim()).join('<br/>') : ''"
+            style="white-space: normal; overflow-wrap: break-word;"
+          ></div>
         </template>
       </Column>
 
@@ -300,5 +313,11 @@ function onDialogNo() {
   border-radius: 8px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
   padding: 1rem;
+}
+
+.address-cell {
+  white-space: normal;
+  overflow-wrap: break-word;
+  max-width: 100%;
 }
 </style>

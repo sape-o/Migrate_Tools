@@ -46,8 +46,6 @@ const multiselectValues = ref([
 
 const multiselectValue = ref(null);
 const toggleValue = ref(false);
-const selectButtonValue = ref(null);
-const selectButtonValues = ref([{ name: 'Option 1' }, { name: 'Option 2' }, { name: 'Option 3' }]);
 const knobValue = ref(50);
 const inputGroupValue = ref(false);
 const treeSelectNodes = ref(null);

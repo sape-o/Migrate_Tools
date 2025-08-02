@@ -190,13 +190,13 @@ async function onDelete(row) {
         </div>
       </template>
 
-      <Column field="id" header="ID" style="min-width: 6rem" />
+      <Column field="id" header="ID" style="min-width: 1rem" />
       <Column field="filename" header="Filename" style="min-width: 12rem">
         <template #filter="{ filterModel }">
           <InputText v-model="filterModel.value" placeholder="Search filename" />
         </template>
       </Column>
-      <Column field="mimetype" header="MIME Type" style="min-width: 10rem">
+      <Column field="mimetype" header="MIME Type" style="min-width: 5rem">
         <template #filter="{ filterModel }">
           <InputText v-model="filterModel.value" placeholder="Search mimetype" />
         </template>

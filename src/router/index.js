@@ -69,6 +69,16 @@ const router = createRouter({
                     component: () => import('@/views/migration/MigrationPolicyDetail.vue')
                 },
                 {
+                    path: '/migration/migration-policy-map',
+                    name: 'migrationPolicyMap',
+                    component: () => import('@/views/migration/MigrationPolicyMap.vue')
+                },
+                {
+                    path: '/migration/migration-policy-map-use',
+                    name: 'migrationPolicyMapUse',
+                    component: () => import('@/views/migration/MigrationPolicyMapUse.vue')
+                },
+                {
                     path: '/root/users',
                     component: AppLayout,
                     component: () => import('@/views/root/RootUser.vue')

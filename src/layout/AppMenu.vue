@@ -16,40 +16,88 @@ const model = ref([
     },
     {
         label: 'ENGINEER',
-        icon: 'pi pi-fw pi-briefcase',
+        icon: 'pi pi-fw pi-sign-in',
         to: '/pages',
         items: [
             {
-                label: 'MIGRATIONS',
-                icon: 'pi pi-fw pi-user',
+                label: 'MIGRATION',
+                icon: 'pi pi-fw pi-sign-in',
                 items: [
                     {
-                        label: 'ADDRESS',
+                        label: 'MIGRATION PALO',
                         icon: 'pi pi-fw pi-sign-in',
-                        to: '/migration/migration-address'
+                        items: [
+                            { 
+                                label: 'ADDRESS',
+                                icon: 'pi pi-fw pi-sign-in',
+                                to: '/migration/migration-address'
+                            },
+                            {
+                                label: 'ADDRESS GROUP',
+                                icon: 'pi pi-fw pi-sign-in',
+                                to: '/migration/migration-address-group',
+                            },
+                            {
+                                label: 'SERVICE',
+                                icon: 'pi pi-fw pi-sign-in',
+                                to: '/migration/migration-service'
+                            },
+                            {
+                                label: 'SERVICE GROUP',
+                                icon: 'pi pi-fw pi-sign-in',
+                                to: '/migration/migration-service-group'
+                            },
+                            {
+                                label: 'POLICY',
+                                icon: 'pi pi-fw pi-sign-in',
+                                to: '/migration/migration-policy'
+                            },
+                            {
+                                label: 'POLICY MAP',
+                                icon: 'pi pi-fw pi-sign-in',
+                                to: '/migration/migration-policy-map'
+                            },
+                        ]
                     },
                     {
-                        label: 'ADDRESS GROUP',
+                        label: '-DEV-MIGRATION CHECK POINT',
                         icon: 'pi pi-fw pi-sign-in',
-                        to: '/migration/migration-address-group',
+                        items: [
+                            { 
+                                label: '-DEV-ADDRESS',
+                                icon: 'pi pi-fw pi-sign-in',
+                                to: '/migration/migration-address'
+                            },
+                            {
+                                label: '-DEV-ADDRESS GROUP',
+                                icon: 'pi pi-fw pi-sign-in',
+                                to: '/migration/migration-address-group',
+                            },
+                            {
+                                label: '-DEV-SERVICE',
+                                icon: 'pi pi-fw pi-sign-in',
+                                to: '/migration/migration-service'
+                            },
+                            {
+                                label: '-DEV-SERVICE GROUP',
+                                icon: 'pi pi-fw pi-sign-in',
+                                to: '/migration/migration-service-group'
+                            },
+                            {
+                                label: '-DEV-POLICY',
+                                icon: 'pi pi-fw pi-sign-in',
+                                to: '/migration/migration-policy'
+                            },
+                            {
+                                label: '-DEV-POLICY MAP',
+                                icon: 'pi pi-fw pi-sign-in',
+                                to: '/migration/migration-policy-map'
+                            },
+                        ]
                     },
-                    {
-                        label: 'SERVICE',
-                        icon: 'pi pi-fw pi-sign-in',
-                        to: '/migration/migration-service'
-                    },
-                    {
-                        label: 'SERVICE GROUP',
-                        icon: 'pi pi-fw pi-sign-in',
-                        to: '/migration/migration-service-group'
-                    },
-                    {
-                        label: '-DEV-POLICY',
-                        icon: 'pi pi-fw pi-sign-in',
-                        to: '/migration/migration-policy'
-                    }
                 ]
             },
+            
         ]
     },
     {
@@ -86,7 +134,7 @@ const model = ref([
                 ]
             },
             {
-                label: '-DEV-MIGRATE',
+                label: 'MIGRATE',
                 icon: 'pi pi-fw pi-bookmark',
                 items: [
                     {

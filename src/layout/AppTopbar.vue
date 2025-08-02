@@ -12,8 +12,8 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
                 <i class="pi pi-bars"></i>
             </button>
             <router-link to="/" class="layout-topbar-logo">
-                <img src="../assets/logo/SeanetLogo.svg" alt="Logo" />
-                <span>AMANDA DEVELOP </span>
+                <img src="../assets/logo/SeanetLogo.svg" alt="Logo" style="height: 40px;"/>
+                <span>AMANDA_DEVELOP_MODE_V2.1_HOT_RELEASE</span>
             </router-link>
         </div>
 

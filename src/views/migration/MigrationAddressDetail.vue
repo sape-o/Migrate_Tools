@@ -1,89 +1,42 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { MigrationDetailID } from '../../service/migration/MigrationAddressDetail'
+import { useRoute } from 'vue-router'
+import { MigrationDetailID } from '../../service/migration/MigrationAddressDetail.js'
 
-// Import PrimeVue components
-import Button from 'primevue/button'
-import Dropdown from 'primevue/dropdown'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
-import InputText from 'primevue/inputtext'
-import MultiSelect from 'primevue/multiselect'
-import Dialog from 'primevue/dialog'
-
+// route param id
 const route = useRoute()
-const router = useRouter()
 const id = route.params.id
 
 const rows = ref([])
 const headers = ref([])
-
 const rowsPerPage = ref(10)
 
+// กำหนด columns ทั้งหมด
 const allColumns = [
-  { field: 'name', header: 'Name' },
-  { field: 'location', header: 'Location' },
-  { field: 'type', header: 'Type' },
-  { field: 'address', header: 'Address' },
-  { field: 'tags', header: 'Tags' }
+  { field: 'name', header: 'Name', minWidth: '150px' },
+  { field: 'location', header: 'Location', minWidth: '150px' },
+  { field: 'address', header: 'Addresses', minWidth: '250px' },
+  { field: 'tags', header: 'Tags', minWidth: '150px' }
 ]
 
+// เริ่มต้นให้แสดงทุกคอลัมน์
+//const visibleColumns = ref([...allColumns])
 const visibleColumns = ref(
-  allColumns.filter(col => ['name', 'location', 'type', 'address'].includes(col.field))
+  allColumns.filter(col => ['name', 'location', 'address'].includes(col.field))
 )
-
 const filters = ref({
   global: { value: null, matchMode: 'contains' },
   name: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
   location: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
-  type: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
   address: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
   tags: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] }
 })
 
-const filteredRows = ref([])
-
+const filteredRows = ref([]) // แถวที่กรองแล้ว
 const exportDialogVisible = ref(false)
-const exportDialogType = ref('')
+const exportDialogType = ref('') // 'csv' หรือ 'commands'
 
-// สำหรับเก็บข้อความค้นหาแบบ global
-const searchTerm = ref('')
-
-// debounce function
-function debounce(fn, delay) {
-  let timer = null
-  return function (...args) {
-    clearTimeout(timer)
-    timer = setTimeout(() => {
-      fn(...args)
-    }, delay)
-  }
-}
-
-// ฟังก์ชันกรองข้อมูลโดย global search term
-function filterRows() {
-  if (!searchTerm.value) {
-    filteredRows.value = rows.value.slice()
-  } else {
-    const term = searchTerm.value.toLowerCase()
-    filteredRows.value = rows.value.filter(row => {
-      return allColumns.some(col => {
-        const cell = (row[col.field] || '').toString().toLowerCase()
-        return cell.includes(term)
-      })
-    })
-  }
-}
-
-// ใช้ debounce กันพิมพ์เร็วเกินไป 300ms
-const debouncedFilterRows = debounce(filterRows, 300)
-
-// เรียก debounce เมื่อ input change
-function onSearchInput() {
-  debouncedFilterRows()
-}
-
+// ฟังก์ชันตั้งชื่อไฟล์แบบ Address_DD-MM-YYYY_HH-MM-SS
 function getTimestampString() {
   const d = new Date()
   const day = String(d.getDate()).padStart(2, '0')
@@ -116,7 +69,8 @@ onMounted(async () => {
     rows.value = parsed.slice(1).map(row => {
       const obj = {}
       headers.value.forEach((h, i) => {
-        obj[h.toLowerCase()] = row[i]
+        const key = h.toLowerCase().replace(/\s+/g, '_') // เช่น "Member Count" → "member_count"
+        obj[key] = row[i]
       })
       obj.id = row[0] || Math.random().toString(36).substring(2, 9)
       return obj
@@ -124,7 +78,6 @@ onMounted(async () => {
     filteredRows.value = rows.value.slice()
   } catch (err) {
     alert('Error loading CSV: ' + err.message)
-    router.push('/pages/empty')
   }
 })
 
@@ -133,7 +86,7 @@ const rowsPerPageOptions = [
   { label: '20', value: 20 },
   { label: '50', value: 50 },
   { label: '100', value: 100 },
-  { label: '200', value: 200 }
+  { label: '200', value: 200 },
 ]
 
 function parseCSV(text) {
@@ -146,16 +99,14 @@ function parseCSV(text) {
 }
 
 function handleCLI(row) {
-  const name = row.name || ''
-  const type = row.type || ''
-  const address = row.address || ''
-
-  if (!name || !type || !address) {
-    alert('Missing required fields: Name / Type / Address')
+  const name = row.name
+  const address = row.address
+  if (!name || !address) {
+    alert('Missing required fields: Name / Address')
     return
   }
 
-  const message = `add name ${name} type ${type} address ${address}`
+  const message = `add name ${name} address ${address}`
   alert(message)
 }
 function onPushAPI(row) {
@@ -164,6 +115,7 @@ function onPushAPI(row) {
   }
 }
 
+// ฟังก์ชันเปิด dialog ก่อน export CSV
 function confirmExportCSV() {
   if (filteredRows.value.length === 0) {
     alert('ไม่มีข้อมูลสำหรับส่งออก')
@@ -173,6 +125,7 @@ function confirmExportCSV() {
   exportDialogVisible.value = true
 }
 
+// ฟังก์ชันเปิด dialog ก่อน export Commands
 function confirmExportCommands() {
   if (filteredRows.value.length === 0) {
     alert('ไม่มีข้อมูลสำหรับส่งออก')
@@ -182,11 +135,12 @@ function confirmExportCommands() {
   exportDialogVisible.value = true
 }
 
+// ฟังก์ชัน export CSV จริง ๆ
 function exportCSV() {
   const csvContent = [
     headers.value.join(','),
     ...filteredRows.value.map(row =>
-      headers.value.map(h => `"${row[h.toLowerCase()] || ''}"`).join(',')
+      headers.value.map(h => `"${row[h.toLowerCase().replace(/\s+/g, '_')] || ''}"`).join(',')
     )
   ].join('\n')
 
@@ -200,6 +154,7 @@ function exportCSV() {
   exportDialogVisible.value = false
 }
 
+// ฟังก์ชัน export Commands จริง ๆ
 function exportCommands() {
   const commands = filteredRows.value.map(row => {
     const name = row.name || ''
@@ -218,6 +173,10 @@ function exportCommands() {
   exportDialogVisible.value = false
 }
 
+function onFilter(event) {
+  filteredRows.value = event.filteredValue || rows.value
+}
+
 function onDialogYes() {
   if (exportDialogType.value === 'csv') {
     exportCSV()
@@ -229,79 +188,89 @@ function onDialogYes() {
 function onDialogNo() {
   exportDialogVisible.value = false
 }
-
-function formatAddress(text) {
-  if (!text) return ''
-  return text.split(';').map(p => p.trim()).join('<br/>')
-}
 </script>
 
 <template>
   <div class="card">
-    <div class="font-semibold text-xl mb-4">Migration Address List Detail</div>
+    <div class="font-semibold text-xl mb-4">Migration Address Group Detail List</div>
 
-    <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
+    <div class="flex justify-between items-center flex-wrap mb-3 gap-2">
       <Button icon="pi pi-filter-slash" label="Clear" outlined @click="initFilters" />
 
-      <div class="flex flex-grow justify-center items-center gap-2 min-w-[280px]">
+      <div class="flex flex-grow justify-center items-center gap-2">
         <InputText
-          v-model="searchTerm"
+          v-model="filters.global.value"
           placeholder="ค้นหา..."
           class="w-full max-w-lg"
-          @input="onSearchInput"
         />
         <span class="text-gray-600 text-sm whitespace-nowrap">ผลลัพธ์: {{ filteredRows.length }} รายการ</span>
       </div>
 
-      <div class="flex items-center gap-2 flex-wrap">
+      <div class="flex items-center gap-2">
         <!-- MultiSelect เลือกคอลัมน์ -->
         <MultiSelect
           v-model="visibleColumns"
           :options="allColumns"
           optionLabel="header"
           placeholder="เลือกคอลัมน์"
-          class="w-48"
           display="chip"
-          :maxSelectedLabels="2"
+          class="w-48"
         />
 
-        <!-- Dropdown เลือก Rows per page -->
         <Dropdown
           :options="rowsPerPageOptions"
           v-model="rowsPerPage"
           optionLabel="label"
           optionValue="value"
           placeholder="Rows per page"
-          class="w-28"
+          class="w-36"
         />
 
-        <!-- ปุ่มเดิม -->
         <Button label="Export Filter CSV" icon="pi pi-file" @click="confirmExportCSV" />
         <Button label="Export Filter Commands" icon="pi pi-code" @click="confirmExportCommands" />
       </div>
     </div>
 
     <DataTable
-      :value="filteredRows"
+      :value="rows"
       :paginator="true"
       :rows="rowsPerPage"
       dataKey="id"
       :rowHover="true"
+      v-model:filters="filters"
       filterDisplay="menu"
+      :filters="filters"
+      :globalFilterFields="['name', 'location', 'address', 'tags']"
       showGridlines
       responsiveLayout="scroll"
-      class="min-w-full"
+      scrollable
+      :virtualRowHeight="40"
+      @filter="onFilter"
     >
       <Column
         v-for="col in visibleColumns"
         :key="col.field"
         :field="col.field"
         :header="col.header"
-        :style="{ maxWidth: '200px', wordBreak: 'break-word', whiteSpace: 'normal' }"
+        :style="{ minWidth: col.minWidth, whiteSpace: 'nowrap', overflowX: 'auto', textOverflow: 'ellipsis' }"
       >
+        <template #filter="{ filterModel }">
+          <InputText v-model="filterModel.value" :placeholder="`Search ${col.header}`" />
+        </template>
+
         <template #body="{ data }">
-          <span v-if="col.field === 'address'" v-html="formatAddress(data[col.field])"></span>
-          <span v-else>{{ data[col.field] }}</span>
+          <div
+            v-if="col.field !== 'addresses'"
+            style="white-space: nowrap; overflow-x: auto; text-overflow: ellipsis;"
+          >
+            {{ data[col.field] }}
+          </div>
+          <div
+            v-else
+            class="address-cell"
+            v-html="data.address ? data.address.split(';').map(item => item.trim()).join('<br/>') : ''"
+            style="white-space: normal; overflow-wrap: break-word;"
+          ></div>
         </template>
       </Column>
 
@@ -309,7 +278,13 @@ function formatAddress(text) {
         <template #body="{ data }">
           <div class="flex gap-2 justify-center">
             <Button label="CLI" icon="pi pi-code" @click="handleCLI(data)" />
-            <Button label="PUSH API" icon="pi pi-send" severity="danger" disabled @click="onPushAPI(data)" />
+            <Button
+              label="PUSH API"
+              icon="pi pi-send"
+              severity="danger"
+              disabled
+              @click="onPushAPI(data)"
+            />
           </div>
         </template>
       </Column>
@@ -337,5 +312,11 @@ function formatAddress(text) {
   border-radius: 8px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
   padding: 1rem;
+}
+
+.address-cell {
+  white-space: normal;
+  overflow-wrap: break-word;
+  max-width: 100%;
 }
 </style>

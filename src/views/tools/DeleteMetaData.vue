@@ -347,19 +347,19 @@ function onDialogCancel() {
         <!-- Option 1 -->
         <div class="flex flex-col sm:flex-row sm:items-center gap-2">
           <RadioButton id="option1" name="option" value="metadata" v-model="radioValue" />
-          <label for="option1" class="ml-0 sm:ml-2">Metadata</label>
+          <label for="option1" class="ml-0 sm:ml-2"> Delete Metadata</label>
         </div>
 
         <!-- Option 2 -->
         <div class="flex flex-col sm:flex-row sm:items-center gap-2">
           <RadioButton id="option2" name="option" value="highlight_author" v-model="radioValue" />
-          <label for="option2" class="ml-0 sm:ml-2">Highlight Author</label>
+          <label for="option2" class="ml-0 sm:ml-2">Delete Highlight Author</label>
         </div>
 
         <!-- Option 3 -->
         <div class="flex flex-col sm:flex-row sm:items-center gap-2">
           <RadioButton id="option3" name="option" value="colorhighlight" v-model="radioValue"/>
-          <label for="option3" class="ml-0 sm:ml-2" :style="{ color: colorValue }">ColorHighlight</label>
+          <label for="option3" class="ml-0 sm:ml-2" :style="{ color: colorValue }">Change Color Highlight</label>
           <ColorPicker format="hex" style="width: 2rem" v-model="colorValue" />
         </div>
       </div>

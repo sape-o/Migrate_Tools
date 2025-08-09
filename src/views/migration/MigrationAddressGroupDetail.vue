@@ -1,7 +1,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useToast } from 'primevue/usetoast'
 import { MigrationDetailID } from '../../service/migration/MigrationAddressGroupDetail.js'
+import { addAddressGroup } from '../../service/migration/common/MigrationCheckpointApiNetowrk.js'
+import { useSessionInfo } from '../../service/composables/MigrationlocalStorage'
+
+const { hasSessionInfoAPI, sessionInfoIpaddressServer, sessionInfoIpaddress, sessionInfoAPI } = useSessionInfo()
+const toast = useToast()
 
 // route param id
 const route = useRoute()
@@ -10,7 +16,8 @@ const id = route.params.id
 const rows = ref([])
 const headers = ref([])
 const rowsPerPage = ref(10)
-
+const displayConfirmationAPI = ref(false)
+const selectedRowForAPI = ref(null)
 // กำหนด columns ทั้งหมด
 const allColumns = [
   { field: 'name', header: 'Name', minWidth: '150px' },
@@ -61,6 +68,8 @@ function initFilters() {
 }
 
 onMounted(async () => {
+  const sessionInfo = localStorage.getItem('sessionInfoAPI')
+  hasSessionInfoAPI.value = !!sessionInfo
   initFilters()
   try {
     const token = localStorage.getItem('token')
@@ -103,20 +112,77 @@ function parseCSV(text) {
 function handleCLI(row) {
   const name = row.name
   const addresses = row.addresses
+
   if (!name || !addresses) {
     alert('Missing required fields: Name / Addresses')
     return
   }
 
-  const message = `add name ${name} addresses ${addresses}`
-  alert(message)
+  const members = addresses.split(';').map(addr => addr.trim()).filter(Boolean)
+
+  if (members.length === 0) {
+    alert('No valid address members found')
+    return
+  }
+
+  const lines = []
+
+  // เริ่มสร้าง group
+  lines.push(`add group name ${name}`)
+
+  // เพิ่มสมาชิกที่อยู่ในกลุ่ม
+  members.forEach(member => {
+    lines.push(`add group ${name} members ${member}`)
+  })
+
+  alert(lines.join('\n'))
 }
+
 function onPushAPI(row) {
-  if (confirm(`Are you sure you want to push API for: ${row.name || row.id}?`)) {
-    alert(`Pushed API for ${row.name || row.id} (not really implemented)`)
+  selectedRowForAPI.value = row
+  displayConfirmationAPI.value = true
+}
+async function ConfirmationAPI() {
+  try {
+    if (!selectedRowForAPI.value) {
+      throw new Error('No row selected')
+    }
+
+    const { name, addresses } = selectedRowForAPI.value
+    
+    
+    // แปลง addresses จาก string "addr1;addr2;addr3" เป็น array ["addr1", "addr2", "addr3"]
+    const members = addresses.split(';').map(addr => addr.trim()).filter(addr => addr.length > 0)
+
+    // สร้าง payload สำหรับ addAddressGroup
+    const payload = {
+      name,
+      members,
+    }
+
+    const result = await addAddressGroup(sessionInfoIpaddressServer, sessionInfoIpaddress, sessionInfoAPI, payload)
+    toast.add({
+      severity: 'success',
+      summary: `Success to push API (IP Range)`,
+      detail: `${JSON.stringify(result.addAddressGroup, null, 2)}`,
+      life: 3000,
+    })
+    toast.add({
+      severity: 'success',
+      summary: `Success to PUBLIC API (IP Range)`,
+      detail: `${JSON.stringify(result.publish, null, 2)}`,
+      life: 3000,
+    })
+    displayConfirmationAPI.value = false
+  } catch (err) {
+    console.error(err)
+    alert(`Add address group failed: ${err.message}`)
   }
 }
 
+function closeConfirmationAPI() {
+    displayConfirmationAPI.value = false
+}
 // ฟังก์ชันเปิด dialog ก่อน export CSV
 function confirmExportCSV() {
   if (filteredRows.value.length === 0) {
@@ -150,7 +216,7 @@ function exportCSV() {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `Address_Filter_${getTimestampString()}.csv`
+  link.download = `Address_Group_Filter_${getTimestampString()}.csv`
   link.click()
   URL.revokeObjectURL(url)
   exportDialogVisible.value = false
@@ -159,17 +225,33 @@ function exportCSV() {
 // ฟังก์ชัน export Commands จริง ๆ
 function exportCommands() {
   const commands = filteredRows.value.map(row => {
-    const name = row.name || ''
-    const type = row.type || ''
-    const address = row.address || ''
-    return `add name ${name} type ${type} address ${address}`
-  }).join('\n')
+    const name = row.name
+    const addresses = row.addresses
+
+    if (!name || !addresses) return '' // ข้ามถ้าไม่ครบ
+
+    const members = addresses.split(';').map(addr => addr.trim()).filter(Boolean)
+
+    if (members.length === 0) return '' // ข้ามถ้าไม่มีสมาชิก
+
+    const lines = []
+
+    // เริ่มคำสั่งสร้าง group
+    lines.push(`add group name ${name}`)
+
+    // เพิ่มสมาชิกเข้า group
+    members.forEach(member => {
+      lines.push(`add group ${name} members ${member}`)
+    })
+
+    return lines.join('\n')
+  }).filter(Boolean).join('\n\n') // แยกแต่ละ group ด้วยบรรทัดว่าง
 
   const blob = new Blob([commands], { type: 'text/plain;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `Address_${getTimestampString()}.txt`
+  link.download = `Address_Group_Command_${getTimestampString()}.txt`
   link.click()
   URL.revokeObjectURL(url)
   exportDialogVisible.value = false
@@ -283,7 +365,8 @@ function onDialogNo() {
               label="PUSH API"
               icon="pi pi-send"
               severity="danger"
-              disabled
+              :disabled="!hasSessionInfoAPI"
+              class="fancy-disabled-button"
               @click="onPushAPI(data)"
             />
           </div>
@@ -304,20 +387,42 @@ function onDialogNo() {
         <Button label="YES" severity="success" outlined @click="onDialogYes" />
       </div>
     </Dialog>
+    <Dialog header="Confirmation" v-model:visible="displayConfirmationAPI" :style="{ width: '350px' }" :modal="true">
+    <div class="flex items-center justify-center">
+        <i class="pi pi-exclamation-triangle mr-4" style="font-size: 2rem" />
+        <span>Are you sure you want to proceed?</span>
+    </div>
+    <template #footer>
+        <Button label="No" icon="pi pi-times" @click="closeConfirmationAPI" text severity="secondary" />
+        <Button label="Yes" icon="pi pi-check" @click="ConfirmationAPI" severity="danger" outlined autofocus />
+    </template>
+  </Dialog>
   </div>
 </template>
 
 <style scoped>
-.card {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-  padding: 1rem;
-}
 
 .address-cell {
   white-space: normal;
   overflow-wrap: break-word;
   max-width: 100%;
+}
+.fancy-disabled-button:disabled {
+  background: repeating-linear-gradient(
+    45deg,
+    #ff9e9e,
+    #ff9e9e 10px,
+    #fcdede 10px,
+    #fcdede 20px
+  );
+  color: #8a0000 !important;
+  border: 2px dashed #ff4d4d;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.fancy-disabled-button:disabled:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 8px rgba(255, 77, 77, 0.5);
 }
 </style>

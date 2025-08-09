@@ -1,15 +1,22 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useToast } from 'primevue/usetoast'
+import { normalizeServiceName } from '@/utils/migration/normalize_name'
 import { MigrationDetailID } from '../../service/migration/MigrationAddressDetail'
+import { useSessionInfo } from '../../service/composables/MigrationlocalStorage'
+import { addTcpService } from '../../service/migration/common/MigrationCheckpointApiNetowrk.js'
 
+const { hasSessionInfoAPI, sessionInfoIpaddressServer, sessionInfoIpaddress, sessionInfoAPI } = useSessionInfo()
+const toast = useToast()
 const route = useRoute()
 const id = route.params.id
 
 const rows = ref([])
 const headers = ref([])
 const rowsPerPage = ref(10)
-
+const displayConfirmationAPI = ref(false)
+const selectedRowForAPI = ref(null)
 // กำหนด columns ทั้งหมด เพื่อใช้ MultiSelect และแสดงผล
 const allColumns = [
   { field: 'name', header: 'Name', minWidth: '150px' },
@@ -59,6 +66,8 @@ function initFilters() {
 
 onMounted(async () => {
   initFilters()
+  const sessionInfo = localStorage.getItem('sessionInfoAPI')
+  hasSessionInfoAPI.value = !!sessionInfo
   try {
     const token = localStorage.getItem('token')
     const csvText = await MigrationDetailID(id, token)
@@ -97,6 +106,48 @@ function parseCSV(text) {
   )
 }
 
+function onPushAPI(row) {
+  selectedRowForAPI.value = row
+  displayConfirmationAPI.value = true
+}
+const ConfirmationAPI = async () => {
+  try {
+    if (!selectedRowForAPI.value) throw new Error('No row selected')
+
+    const { name, destination_port } = selectedRowForAPI.value
+
+    const serviceData = {
+      'name': normalizeServiceName(name,'Port'),
+      'port': destination_port?.toString()
+    }
+
+    const result = await addTcpService(
+      sessionInfoIpaddressServer,
+      sessionInfoIpaddress,
+      sessionInfoAPI,
+      serviceData
+    )
+
+    toast.add({
+      severity: 'success',
+      summary: `Success to push Service API`,
+      detail: `${JSON.stringify(result.addService, null, 2)}`,
+      life: 3000,
+    })
+    toast.add({
+      severity: 'success',
+      summary: `Success to PUBLIC API`,
+      detail: `${JSON.stringify(result.publish, null, 2)}`,
+      life: 3000,
+    })
+    displayConfirmationAPI.value = false
+  } catch (err) {
+    console.error('Error:', err.message)
+  }
+}
+function closeConfirmationAPI() {
+    displayConfirmationAPI.value = false
+}
 // ฟังก์ชันเปิด dialog ก่อน export CSV
 function confirmExportCSV() {
   if (filteredRows.value.length === 0) {
@@ -106,17 +157,6 @@ function confirmExportCSV() {
   exportDialogType.value = 'csv'
   exportDialogVisible.value = true
 }
-
-// ฟังก์ชันเปิด dialog ก่อน export Commands
-function confirmExportCommands() {
-  if (filteredRows.value.length === 0) {
-    alert('ไม่มีข้อมูลสำหรับส่งออก')
-    return
-  }
-  exportDialogType.value = 'commands'
-  exportDialogVisible.value = true
-}
-
 // ฟังก์ชัน export CSV จริง ๆ
 function exportCSV() {
   // ใช้ visibleColumns เพื่อ export เฉพาะคอลัมน์ที่เลือกแสดง
@@ -139,36 +179,52 @@ function exportCSV() {
   URL.revokeObjectURL(url)
   exportDialogVisible.value = false
 }
-
+// ฟังก์ชันเปิด dialog ก่อน export Commands
+function confirmExportCommands() {
+  if (filteredRows.value.length === 0) {
+    alert('ไม่มีข้อมูลสำหรับส่งออก')
+    return
+  }
+  exportDialogType.value = 'commands'
+  exportDialogVisible.value = true
+}
 // ฟังก์ชัน export Commands จริง ๆ
 function exportCommands() {
-  const commands = filteredRows.value.map(row => {
-    // export เฉพาะคอลัมน์ที่แสดง และจัดรูปแบบเหมาะสม
-    // ตัวอย่าง: ถ้าแสดงชื่อ, protocol, port ให้ใช้คำสั่ง add name ... protocol ... destinationport ...
-    // เราจะตรวจสอบว่าคอลัมน์ visibleColumns มี field ไหน แล้วเรียงในคำสั่งตามนั้น
-    const parts = []
-    visibleColumns.value.forEach(col => {
-      const val = row[col.field] || ''
-      // แปลง field เป็นรูปแบบคำสั่ง เช่น name, protocol, destinationport (lowercase no underscore)
-      let cmdField = col.field.toLowerCase().replace(/_/g, '')
-      parts.push(`${cmdField} ${val}`)
-    })
-    return `add ${parts.join(' ')}`
+  const commands = filteredRows.value.flatMap(row => {
+    const name = normalizeServiceName(row.name, 'Port') || ''
+    const protocol = row.protocol?.toLowerCase() || ''
+    const destinationPort = row.destination_port || ''
+
+    if (!name || !protocol || !destinationPort) return []
+
+    if (destinationPort.includes(',')) {
+      const ports = destinationPort.split(',').map(p => p.trim())
+      const portCommands = ports.map(port => `add service-${protocol} name ${name}_${port} port ${port}`)
+      const groupCommand = `add service-group name ${name}_group members ${ports.map(p => `${name}_${p}`).join(', ')}`
+      return [...portCommands, groupCommand, '']  // '' เพื่อเว้นบรรทัดว่าง
+    }
+
+    if (destinationPort.includes('-')) {
+      return [`add service-${protocol} name ${name} port ${destinationPort}`, ''] // เว้นบรรทัดว่าง
+    }
+
+    return [`add service-${protocol} name ${name} port ${destinationPort}`, ''] // เว้นบรรทัดว่าง
   }).join('\n')
 
   const blob = new Blob([commands], { type: 'text/plain;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `Address_Commands_${getTimestampString()}.txt`
+  link.download = `Service_Command_Filter_${getTimestampString()}.txt`
   link.click()
   URL.revokeObjectURL(url)
   exportDialogVisible.value = false
 }
 
+
 function handleCLI(row) {
-  const name = row.name || ''
-  const protocol = row.protocol || ''
+  const name = normalizeServiceName(row.name, 'Port') || ''
+  const protocol = row.protocol?.toLowerCase() || ''
   const destinationPort = row.destination_port || ''
 
   if (!name || !protocol || !destinationPort) {
@@ -176,8 +232,29 @@ function handleCLI(row) {
     return
   }
 
-  const message = `add name ${name} protocol ${protocol} Destinationport ${destinationPort}`
-  alert(message)
+  let messages = []
+
+  // หลายพอร์ต (comma-separated)
+  if (destinationPort.includes(',')) {
+    const ports = destinationPort.split(',').map(p => p.trim())
+    ports.forEach(port => {
+      messages.push(`add service-${protocol} name ${name}_${port} port ${port}`)
+    })
+    const memberNames = ports.map(port => `${name}_${port}`).join(', ')
+    messages.push(`add service-group name ${name}_group members ${memberNames}`)
+  }
+
+  // พอร์ตเรนจ์ เช่น 1000-2000
+  else if (destinationPort.includes('-')) {
+    messages.push(`add service-${protocol} name ${name} port ${destinationPort}`)
+  }
+
+  // พอร์ตเดียว
+  else {
+    messages.push(`add service-${protocol} name ${name} port ${destinationPort}`)
+  }
+
+  alert(messages.join('\n'))
 }
 
 function onFilter(event) {
@@ -192,7 +269,6 @@ function onDialogYes() {
     exportCommands()
   }
 }
-
 // dialog ปุ่ม No กดแล้วปิด dialog
 function onDialogNo() {
   exportDialogVisible.value = false
@@ -245,13 +321,13 @@ function onDialogNo() {
       v-model:filters="filters"
       filterDisplay="menu"
       :filters="filters"
-      :globalFilterFields="allColumns.map(c => c.field)"
+      :globalFilterFields="['name', 'location', 'protocol', 'destination_port']"
       showGridlines
       responsiveLayout="scroll"
       @filter="onFilter"
     >
       <Column
-        v-for="col in visibleColumns"
+        v-for="col in visibleColumns.filter(c => c.field !== 'destination_port')"
         :key="col.field"
         :field="col.field"
         :header="col.header"
@@ -259,6 +335,29 @@ function onDialogNo() {
       >
         <template #filter="{ filterModel }">
           <InputText v-model="filterModel.value" :placeholder="`Search ${col.header}`" />
+        </template>
+      </Column>
+
+      <!-- แก้ไข destination_port ให้แสดงแบบขึ้นบรรทัดใหม่ -->
+      <Column
+        field="destination_port"
+        header="Destination Port"
+        :style="{ minWidth: '120px', whiteSpace: 'normal', wordBreak: 'break-word' }"
+      >
+        <template #body="{ data }">
+          <div>
+            <template v-if="data.destination_port && data.destination_port.includes(',')">
+              <span v-for="(port, idx) in data.destination_port.split(',')" :key="idx">
+                {{ port.trim() }}<template v-if="idx !== data.destination_port.split(',').length -1"><br></template>
+              </span>
+            </template>
+            <template v-else>
+              {{ data.destination_port }}
+            </template>
+          </div>
+        </template>
+        <template #filter="{ filterModel }">
+          <InputText v-model="filterModel.value" placeholder="Search Destination Port" />
         </template>
       </Column>
 
@@ -270,7 +369,8 @@ function onDialogNo() {
               label="PUSH API"
               icon="pi pi-send"
               severity="danger"
-              disabled
+              :disabled="!hasSessionInfoAPI"
+              class="fancy-disabled-button"
               @click="onPushAPI(data)"
             />
           </div>
@@ -291,14 +391,37 @@ function onDialogNo() {
         <Button label="YES" severity="success" outlined @click="onDialogYes" />
       </div>
     </Dialog>
+
+    <Dialog header="Confirmation" v-model:visible="displayConfirmationAPI" :style="{ width: '350px' }" :modal="true">
+      <div class="flex items-center justify-center">
+        <i class="pi pi-exclamation-triangle mr-4" style="font-size: 2rem" />
+        <span>Are you sure you want to proceed?</span>
+      </div>
+      <template #footer>
+        <Button label="No" icon="pi pi-times" @click="closeConfirmationAPI" text severity="secondary" />
+        <Button label="Yes" icon="pi pi-check" @click="ConfirmationAPI" severity="danger" outlined autofocus />
+      </template>
+    </Dialog>
   </div>
 </template>
 
 <style scoped>
-.card {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-  padding: 1rem;
+.fancy-disabled-button:disabled {
+  background: repeating-linear-gradient(
+    45deg,
+    #ff9e9e,
+    #ff9e9e 10px,
+    #fcdede 10px,
+    #fcdede 20px
+  );
+  color: #8a0000 !important;
+  border: 2px dashed #ff4d4d;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.fancy-disabled-button:disabled:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 8px rgba(255, 77, 77, 0.5);
 }
 </style>

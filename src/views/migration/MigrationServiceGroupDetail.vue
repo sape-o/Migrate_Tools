@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { MigrationDetailID } from '../../service/migration/MigrationAddressGroupDetail.js'
+import { normalizeServiceName } from '@/utils/migration/normalize_name'
 
 const route = useRoute()
 const id = route.params.id
@@ -9,6 +10,7 @@ const id = route.params.id
 const rows = ref([])
 const headers = ref([])
 const rowsPerPage = ref(10)
+const hasSessionInfoAPI = ref(false)
 
 // กำหนด columns ทั้งหมด
 const allColumns = [
@@ -60,6 +62,8 @@ function initFilters() {
 
 onMounted(async () => {
   initFilters()
+  const sessionInfo = localStorage.getItem('sessionInfoAPI')
+  hasSessionInfoAPI.value = !!sessionInfo
   try {
     const token = localStorage.getItem('token')
     const csvText = await MigrationDetailID(id, token)
@@ -98,18 +102,75 @@ function parseCSV(text) {
   )
 }
 
-function handleCLI(row) {
-  const name = row.name
-  const services = row.services
+function handleCLICreate(row) {
+  let commands = ''
 
-  if (!name || !services) {
-    alert('Missing required fields: Name / Services')
+  // ชื่อ group ปรับให้ถูกต้อง
+  let groupName = normalizeServiceName(row.name || '', 'Port')
+  const destinationPort = row.destination_port || ''
+
+  if (!groupName || !destinationPort) {
+    alert('Missing required fields: Name / Destination Port')
     return
   }
 
-  const message = `add name ${name} services ${services}`
-  alert(message)
+  // แยก ports ด้วยเครื่องหมายคอมม่า
+  const ports = destinationPort.split(',').map(p => p.trim()).filter(Boolean)
+  const serviceNames = []
+
+  ports.forEach((port, index) => {
+    // ชื่อ service แต่ละตัว
+    const svcName = normalizeServiceName(`${groupName}_${index + 1}`, 'Port')
+
+    // สร้าง service (single port หรือ range)
+    commands += `add service ${svcName} port ${port}\n`
+    serviceNames.push(svcName)
+  })
+
+  // เว้นบรรทัดแล้วสร้าง group
+  commands += `\nadd service_group ${groupName} members ${serviceNames.join(',')}\n`
+
+  // แสดงผล
+  alert(commands || 'No valid CLI commands generated.')
 }
+
+function handleCLI(row) {
+  if (!row || !row.name || !row.services) {
+    alert('Missing required fields: Group Name / Services list')
+    return
+  }
+
+  // แปลงเป็น array ถ้าเป็น string
+  let serviceList = []
+  if (Array.isArray(row.services)) {
+    serviceList = row.services
+  } else if (typeof row.services === 'string') {
+    serviceList = row.services.split(';').map(s => s.trim()).filter(s => s.length > 0)
+  } else {
+    alert('Services data format is invalid')
+    return
+  }
+
+  // แก้ชื่อ group ถ้าจำเป็น
+  const groupName = /^[0-9]/.test(row.name)
+    ? normalizeServiceName(row.name, 'Port')
+    : row.name
+
+  // แก้ชื่อ service แต่ละตัวถ้าขึ้นต้นด้วยตัวเลข
+  const fixedServices = serviceList.map(svcName => {
+    return /^[0-9]/.test(svcName)
+      ? normalizeServiceName(svcName, 'Port')
+      : svcName
+  })
+
+  // สร้างคำสั่ง CLI
+  const command = `add service_group ${groupName} members ${fixedServices.join(',')}`
+
+  // แสดงผล
+  alert(command)
+}
+
+
 
 function onPushAPI(row) {
   if (confirm(`Are you sure you want to push API for: ${row.name || row.id}?`)) {
@@ -154,18 +215,46 @@ function exportCSV() {
 }
 
 function exportCommands() {
+  if (!filteredRows.value || filteredRows.value.length === 0) {
+    alert('ไม่มีข้อมูลสำหรับ export')
+    return
+  }
+
   const commands = filteredRows.value.map(row => {
-    const name = row.name || ''
-    const type = row.type || ''
-    const address = row.address || ''
-    return `add name ${name} type ${type} address ${address}`
-  }).join('\n')
+    // แก้ชื่อ group ถ้าขึ้นต้นด้วยตัวเลข
+    const rawGroupName = row.name || ''
+    const groupName = /^[0-9]/.test(rawGroupName)
+      ? normalizeServiceName(rawGroupName, 'Port')
+      : rawGroupName
+
+    let servicesRaw = row.services || ''
+    if (typeof servicesRaw !== 'string') {
+      servicesRaw = String(servicesRaw)
+    }
+
+    // แยกและ trim members
+    const services = servicesRaw
+      .split(';')
+      .map(s => s.trim())
+      .filter(s => s.length > 0)
+
+    // แก้ชื่อ service แต่ละตัวที่ขึ้นต้นด้วยเลข
+    const fixedServices = services.map(svcName => {
+      return /^[0-9]/.test(svcName)
+        ? normalizeServiceName(svcName, 'Port')
+        : svcName
+    })
+
+    const membersStr = fixedServices.join(', ')
+
+    return `add service-group name ${groupName} members ${membersStr}`
+  }).join('\n\n')  // เว้นบรรทัดว่างระหว่างชุดคำสั่งแต่ละกลุ่ม
 
   const blob = new Blob([commands], { type: 'text/plain;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `Address_${getTimestampString()}.txt`
+  link.download = `ServiceGroup_Commands_${getTimestampString()}.txt`
   link.click()
   URL.revokeObjectURL(url)
   exportDialogVisible.value = false
@@ -276,7 +365,8 @@ function onDialogNo() {
                 label="PUSH API"
                 icon="pi pi-send"
                 severity="danger"
-                disabled
+                :disabled="!hasSessionInfoAPI"
+                class="fancy-disabled-button"
                 @click="onPushAPI(data)"
               />
             </div>
@@ -301,15 +391,27 @@ function onDialogNo() {
 </template>
 
 <style scoped>
-.card {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-  padding: 1rem;
-}
 
 .table-wrapper {
   overflow-x: auto;
   width: 100%;
+}
+.fancy-disabled-button:disabled {
+  background: repeating-linear-gradient(
+    45deg,
+    #ff9e9e,
+    #ff9e9e 10px,
+    #fcdede 10px,
+    #fcdede 20px
+  );
+  color: #8a0000 !important;
+  border: 2px dashed #ff4d4d;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.fancy-disabled-button:disabled:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 8px rgba(255, 77, 77, 0.5);
 }
 </style>

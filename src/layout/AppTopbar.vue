@@ -13,7 +13,7 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
             </button>
             <router-link to="/" class="layout-topbar-logo">
                 <img src="../assets/logo/SeanetLogo.svg" alt="Logo" style="height: 40px;"/>
-                <span>AMANDA_DEVELOP_MODE_V2.1_HOT_RELEASE</span>
+                <span>AMANDA_DEVELOP_MODE_V2.3_HOT_RELEASE</span>
             </router-link>
         </div>
 

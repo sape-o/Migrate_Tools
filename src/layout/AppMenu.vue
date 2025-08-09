@@ -24,6 +24,11 @@ const model = ref([
                 icon: 'pi pi-fw pi-sign-in',
                 items: [
                     {
+                        label: 'API CHECK POINT',
+                        icon: 'pi pi-fw pi-sign-in',
+                        to: '/migration/migration-checkpoint-api-get'
+                    },
+                    {
                         label: 'MIGRATION PALO',
                         icon: 'pi pi-fw pi-sign-in',
                         items: [

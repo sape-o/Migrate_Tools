@@ -142,7 +142,9 @@ onMounted(async () => {
     router.push('/pages/empty')
   }
 })
-
+function onFilter(event) {
+  filteredRows.value = event.filteredValue || rows.value
+}
 // Live filtered rows computed from rows and filters
 const filteredRows = computed(() => {
   function contains(value, filter) {
@@ -220,7 +222,7 @@ function exportCSV() {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
   const link = document.createElement('a')
   link.href = URL.createObjectURL(blob)
-  link.download = `Address_Filter_${getTimestampString()}.csv`
+  link.download = `Export_Policy_Filter_${getTimestampString()}.csv`
   link.click()
   URL.revokeObjectURL(link.href)
   exportDialogVisible.value = false
@@ -235,7 +237,7 @@ function exportCommands() {
   const blob = new Blob([commands], { type: 'text/plain;charset=utf-8;' })
   const link = document.createElement('a')
   link.href = URL.createObjectURL(blob)
-  link.download = `Address_${getTimestampString()}.txt`
+  link.download = `Export_Policy_Command_${getTimestampString()}.txt`
   link.click()
   URL.revokeObjectURL(link.href)
   exportDialogVisible.value = false
@@ -294,13 +296,25 @@ function onDialogNo() {
       :rows="rowsPerPage"
       dataKey="id"
       :rowHover="true"
+      v-model:filters="filters"
       filterDisplay="menu"
       :filters="filters"
-      :globalFilterFields="visibleColumns.map((col) => col.field)"
+      :globalFilterFields="[
+      'name',
+      'tags',
+      'source_zone',
+      'source_address',
+      'destination_zone',
+      'destination_address',
+      'application',
+      'service',
+      'profile',
+      'options',]"
       showGridlines
       responsiveLayout="scroll"
       scrollable
       style="min-width: 100%"
+      @filter="onFilter"
     >
       <Column
         v-for="col in visibleColumns"
@@ -318,9 +332,8 @@ function onDialogNo() {
 
         <template #filter="{ filterModel }">
           <InputText
-            v-model="filters.value[col.field].constraints[0].value"
+            v-model="filterModel.value"
             :placeholder="`Search ${col.header}`"
-            style="width: 100%"
           />
         </template>
       </Column>
@@ -346,10 +359,5 @@ function onDialogNo() {
 </template>
 
 <style scoped>
-.card {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-  padding: 1rem;
-}
+
 </style>

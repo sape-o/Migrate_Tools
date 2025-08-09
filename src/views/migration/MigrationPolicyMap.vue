@@ -298,8 +298,7 @@ function resetDropdown() {
   dropdownServiceGroup.value = null
 }
 async function detailUse(row) {
-  alert(row.id)
-  await router.push(`/migration/migration-policy-map-use/${row.id}`)
+  await router.push(`/migration/migration-policy-map-use/${row.validate_id}`)
 }
 </script>
 

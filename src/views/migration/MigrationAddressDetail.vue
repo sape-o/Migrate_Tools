@@ -1,40 +1,50 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useToast } from 'primevue/usetoast'
+import { cidrToSubnetMask } from '@/utils/migration/networkUtils.js'
 import { MigrationDetailID } from '../../service/migration/MigrationAddressDetail.js'
+import { addNetwork, addAddressRange, } from '../../service/migration/common/MigrationCheckpointApiNetowrk.js'
+import { useSessionInfo } from '../../service/composables/MigrationlocalStorage'
+
+const { hasSessionInfoAPI, sessionInfoIpaddressServer, sessionInfoIpaddress, sessionInfoAPI } = useSessionInfo()
 
 // route param id
 const route = useRoute()
 const id = route.params.id
+const toast = useToast()
 
 const rows = ref([])
 const headers = ref([])
 const rowsPerPage = ref(10)
+const filteredRows = ref([]) // แถวที่กรองแล้ว
+const exportDialogVisible = ref(false)
+const exportDialogType = ref('') // 'csv' หรือ 'commands'
+const displayConfirmationAPI = ref(false)
+const selectedRowForAPI = ref(null)
 
 // กำหนด columns ทั้งหมด
 const allColumns = [
-  { field: 'name', header: 'Name', minWidth: '150px' },
-  { field: 'location', header: 'Location', minWidth: '150px' },
-  { field: 'address', header: 'Addresses', minWidth: '250px' },
-  { field: 'tags', header: 'Tags', minWidth: '150px' }
+  { field: 'name', header: 'Name', minWidth: '100px' },
+  { field: 'location', header: 'Location', minWidth: '100px' },
+  { field: 'type', header: 'Type', minWidth: '100px' },
+  { field: 'address', header: 'Addresses', minWidth: '150px' },
+  { field: 'tags', header: 'Tags', minWidth: '100px' }
 ]
 
 // เริ่มต้นให้แสดงทุกคอลัมน์
 //const visibleColumns = ref([...allColumns])
 const visibleColumns = ref(
-  allColumns.filter(col => ['name', 'location', 'address'].includes(col.field))
+  allColumns.filter(col => ['name', 'location', 'type', 'address'].includes(col.field))
 )
 const filters = ref({
   global: { value: null, matchMode: 'contains' },
   name: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
   location: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
+  type: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
   address: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] },
   tags: { operator: 'and', constraints: [{ value: null, matchMode: 'contains' }] }
 })
-
-const filteredRows = ref([]) // แถวที่กรองแล้ว
-const exportDialogVisible = ref(false)
-const exportDialogType = ref('') // 'csv' หรือ 'commands'
 
 // ฟังก์ชันตั้งชื่อไฟล์แบบ Address_DD-MM-YYYY_HH-MM-SS
 function getTimestampString() {
@@ -57,6 +67,8 @@ function initFilters() {
     }
   })
 }
+
+
 
 onMounted(async () => {
   initFilters()
@@ -101,18 +113,137 @@ function parseCSV(text) {
 function handleCLI(row) {
   const name = row.name
   const address = row.address
-  if (!name || !address) {
-    alert('Missing required fields: Name / Address')
+  const type = row.type
+
+  if (!name || !address || !type) {
+    alert('Missing required fields: Name / Address / Type')
     return
   }
 
-  const message = `add name ${name} address ${address}`
+  let message = ''
+
+  if (type === 'IP Netmask') {
+    let ip = address
+    let subnet = '255.255.255.255'  // ค่า default
+
+    if (address.includes('/')) {
+      const [ipPart, cidrPart] = address.split('/')
+      ip = ipPart
+      subnet = cidrToSubnetMask(cidrPart) || subnet
+    }
+
+    message = `add network name ${name} subnet ${ip} subnet-mask ${subnet}`
+  } 
+  else if (type === 'IP Range') {
+    message = `add address-range name ${name} ip-address ${address.split('-')[0]} to ${address.split('-')[1]}`
+  }
+  else if (type === 'FQDN') {
+    message = `add host name ${name} type domain domain-name ${address}`
+  }
+  else {
+    alert('Unsupported type')
+    return
+  }
+
   alert(message)
 }
+
+
 function onPushAPI(row) {
-  if (confirm(`Are you sure you want to push API for: ${row.name || row.id}?`)) {
-    alert(`Pushed API for ${row.name || row.id} (not really implemented)`)
+  selectedRowForAPI.value = row
+  displayConfirmationAPI.value = true
+}
+
+function ConfirmationAPI() {
+  try {
+    const row = selectedRowForAPI.value
+    if (!row) {
+      alert('ไม่พบข้อมูล row')
+      return
+    }
+
+    const { address, name, type } = row
+
+    if (type === 'IP Netmask') {
+      let subnet = ''
+      let subnetMask = ''
+
+      if (address.includes('/')) {
+        const [ip, mask] = address.split('/')
+        subnet = ip
+        subnetMask = cidrToSubnetMask(mask)
+      } else {
+        subnet = address
+        subnetMask = '255.255.255.255' // เท่ากับ /32
+      }
+
+      const payload = {
+        name: name,
+        subnet: subnet,
+        subnet_mask: subnetMask
+      }
+
+      addNetwork(sessionInfoIpaddressServer, sessionInfoIpaddress, sessionInfoAPI, payload)
+        .then(res => {
+          toast.add({
+            severity: 'success',
+            summary: `Success to push API`,
+            detail: `${JSON.stringify(res.addNetwork, null, 2)}`,
+            life: 3000,
+          })
+          toast.add({
+            severity: 'success',
+            summary: `Success to PUBLIC API`,
+            detail: `${JSON.stringify(res.publish, null, 2)}`,
+            life: 3000,
+          })
+        })
+        .catch(err => {
+          alert('❌ Push API ล้มเหลว: ' + err.message)
+        })
+
+    } else if (type === 'IP Range') {
+      const [ip_first, ip_last] = address.split('-').map(str => str.trim())
+
+      const payload = {
+        name: name,
+        ip_first,
+        ip_last
+      }
+
+      addAddressRange(sessionInfoIpaddressServer, sessionInfoIpaddress, sessionInfoAPI, { rangeData: payload })
+        .then(res => {
+          toast.add({
+            severity: 'success',
+            summary: `Success to push API (IP Range)`,
+            detail: `${JSON.stringify(res.addAddressRange, null, 2)}`,
+            life: 3000,
+          })
+          toast.add({
+            severity: 'success',
+            summary: `Success to PUBLIC API (IP Range)`,
+            detail: `${JSON.stringify(res.publish, null, 2)}`,
+            life: 3000,
+          })
+        })
+        .catch(err => {
+          alert('❌ Push API (IP Range) ล้มเหลว: ' + err.message)
+        })
+
+    } else if (type === 'FQDN') {
+      handleFQDN(row) // Placeholder
+    } else {
+      alert('❌ ไม่รองรับประเภท: ' + type)
+    }
+
+    displayConfirmationAPI.value = false
+  } catch (err) {
+    alert("catch error: " + err.message)
   }
+}
+
+function closeConfirmationAPI() {
+    displayConfirmationAPI.value = false
 }
 
 // ฟังก์ชันเปิด dialog ก่อน export CSV
@@ -160,14 +291,39 @@ function exportCommands() {
     const name = row.name || ''
     const type = row.type || ''
     const address = row.address || ''
-    return `add name ${name} type ${type} address ${address}`
-  }).join('\n')
+
+    if (!name || !type || !address) return null
+
+    if (type === 'IP Netmask') {
+      let ip = address
+      let subnet = '255.255.255.255'
+
+      if (address.includes('/')) {
+        const [ipPart, cidrPart] = address.split('/')
+        ip = ipPart
+        subnet = cidrToSubnetMask(cidrPart) || subnet
+      }
+
+      return `add network name ${name} subnet ${ip} subnet-mask ${subnet}`
+    } 
+    else if (type === 'IP Range') {
+      const [start, end] = address.split('-')
+      return `add address-range name ${name} ip-address ${start} to ${end}`
+    } 
+    else if (type === 'FQDN') {
+      return `add host name ${name} type domain domain-name ${address}`
+    }
+
+    return `add name ${name} type ${type} address ${address}` // fallback
+  })
+  .filter(cmd => cmd !== null)
+  .join('\n')
 
   const blob = new Blob([commands], { type: 'text/plain;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `Address_${getTimestampString()}.txt`
+  link.download = `Address_Command_Filter_${getTimestampString()}.txt`
   link.click()
   URL.revokeObjectURL(url)
   exportDialogVisible.value = false
@@ -188,11 +344,12 @@ function onDialogYes() {
 function onDialogNo() {
   exportDialogVisible.value = false
 }
+
 </script>
 
 <template>
   <div class="card">
-    <div class="font-semibold text-xl mb-4">Migration Address Group Detail List</div>
+    <div class="font-semibold text-xl mb-4">Migration Address Detail List</div>
 
     <div class="flex justify-between items-center flex-wrap mb-3 gap-2">
       <Button icon="pi pi-filter-slash" label="Clear" outlined @click="initFilters" />
@@ -282,7 +439,8 @@ function onDialogNo() {
               label="PUSH API"
               icon="pi pi-send"
               severity="danger"
-              disabled
+              :disabled="!hasSessionInfoAPI"
+              class="fancy-disabled-button"
               @click="onPushAPI(data)"
             />
           </div>
@@ -304,19 +462,42 @@ function onDialogNo() {
       </div>
     </Dialog>
   </div>
+  
+  <Dialog header="Confirmation" v-model:visible="displayConfirmationAPI" :style="{ width: '350px' }" :modal="true">
+    <div class="flex items-center justify-center">
+        <i class="pi pi-exclamation-triangle mr-4" style="font-size: 2rem" />
+        <span>Are you sure you want to proceed?</span>
+    </div>
+    <template #footer>
+        <Button label="No" icon="pi pi-times" @click="closeConfirmationAPI" text severity="secondary" />
+        <Button label="Yes" icon="pi pi-check" @click="ConfirmationAPI" severity="danger" outlined autofocus />
+    </template>
+  </Dialog>
 </template>
 
 <style scoped>
-.card {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-  padding: 1rem;
-}
 
 .address-cell {
   white-space: normal;
   overflow-wrap: break-word;
   max-width: 100%;
+}
+.fancy-disabled-button:disabled {
+  background: repeating-linear-gradient(
+    45deg,
+    #ff9e9e,
+    #ff9e9e 10px,
+    #fcdede 10px,
+    #fcdede 20px
+  );
+  color: #8a0000 !important;
+  border: 2px dashed #ff4d4d;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.fancy-disabled-button:disabled:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 8px rgba(255, 77, 77, 0.5);
 }
 </style>

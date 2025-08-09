@@ -74,9 +74,14 @@ const router = createRouter({
                     component: () => import('@/views/migration/MigrationPolicyMap.vue')
                 },
                 {
-                    path: '/migration/migration-policy-map-use',
+                    path: '/migration/migration-policy-map-use/:id',
                     name: 'migrationPolicyMapUse',
                     component: () => import('@/views/migration/MigrationPolicyMapUse.vue')
+                },
+                {
+                    path: '/migration/migration-checkpoint-api-get/',
+                    name: 'migrationCheckpointApiGet',
+                    component: () => import('@/views/migration/api/MigrationCheckpointApiGet.vue')
                 },
                 {
                     path: '/root/users',

@@ -87,11 +87,6 @@ async function handleLoginLogout() {
   } else {
     // temp
     localStorage.clear()
-    savedSessionAPI.value = ''
-    savedSessionName.value = ''
-    savedSessionIpaddress.value = ''
-    savedSessionIpaddressServer.value = ''
-    savedSessionTimeout.value = 0
     countdown.value = 0
     try {
       const returnLogout = await logout(savedSessionIpaddressServer.value, savedSessionIpaddress.value, savedSessionAPI.value)

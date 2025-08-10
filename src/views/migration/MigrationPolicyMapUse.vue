@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { cidrToSubnetMask } from '@/utils/migration/networkUtils.js'
+import { normalizeServiceName } from '@/utils/migration/normalize_name'
 import { getMigrationMappedData } from '../../service/migration/MigrationPolicyMapDetail.js'
 import { addNetwork, addAddressRange } from '../../service/migration/common/MigrationCheckpointApiNetowrk.js'
 import { useSessionInfo } from '../../service/composables/MigrationlocalStorage'
@@ -243,9 +244,132 @@ function rowClassRed(data) {
 }
 
 
-const addressCLI = async (id) => {
-  alert("CLI"+JSON.stringify(id))
+
+function onClickCLI(row, type) {
+  if (type === 'Address') {
+    const name = row.name
+    const address = row.address
+    const type = row.type
+    if (!name || !address || !type) {
+      alert('Missing required fields: Name / Address / Type')
+      return
+    }
+    let message = ''
+    if (type === 'IP Netmask') {
+      let ip = address
+      let subnet = '255.255.255.255'  // ค่า default
+
+      if (address.includes('/')) {
+        const [ipPart, cidrPart] = address.split('/')
+        ip = ipPart
+        subnet = cidrToSubnetMask(cidrPart) || subnet
+      }
+
+      message = `add network name ${name} subnet ${ip} subnet-mask ${subnet}`
+    } 
+    else if (type === 'IP Range') {
+      message = `add address-range name ${name} ip-address ${address.split('-')[0]} to ${address.split('-')[1]}`
+    }
+    else if (type === 'FQDN') {
+      message = `add host name ${name} type domain domain-name ${address}`
+    }
+    else {
+      alert('Unsupported type')
+      return
+    }
+    alert(message)
+  } else if (type === 'Address Group') {
+    const name = row.name
+    const addresses = row.addresses
+
+    if (!name || !addresses) {
+      alert('Missing required fields: Name / Addresses')
+      return
+    }
+
+    const members = addresses.split(';').map(addr => addr.trim()).filter(Boolean)
+
+    if (members.length === 0) {
+      alert('No valid address members found')
+      return
+    }
+
+    const lines = []
+
+    // เริ่มสร้าง group
+    lines.push(`add group name ${name}`)
+
+    // เพิ่มสมาชิกที่อยู่ในกลุ่ม
+    members.forEach(member => {
+      lines.push(`add group ${name} members ${member}`)
+    })
+
+    alert(lines.join('\n'))
+  } else if (type === 'Services') {
+    const name = normalizeServiceName(row.name, 'Port') || ''
+    const protocol = row.protocol?.toLowerCase() || ''
+    const destinationPort = row.destination_port || ''
+
+    if (!name || !protocol || !destinationPort) {
+      alert('Missing required fields: Name / Protocol / Destination Port')
+      return
+    }
+
+    let messages = []
+
+    // หลายพอร์ต (comma-separated)
+    if (destinationPort.includes(',')) {
+      const ports = destinationPort.split(',').map(p => p.trim())
+      ports.forEach(port => {
+        messages.push(`add service-${protocol} name ${name}_${port} port ${port}`)
+      })
+      const memberNames = ports.map(port => `${name}_${port}`).join(', ')
+      messages.push(`add service-group name ${name}_group members ${memberNames}`)
+    }
+
+    // พอร์ตเรนจ์ เช่น 1000-2000
+    else if (destinationPort.includes('-')) {
+      messages.push(`add service-${protocol} name ${name} port ${destinationPort}`)
+    }
+
+    // พอร์ตเดียว
+    else {
+      messages.push(`add service-${protocol} name ${name} port ${destinationPort}`)
+    }
+
+    alert(messages.join('\n'))
+  } else if (type === 'Service Group') {
+    if (!row || !row.name || !row.services) {
+      alert('Missing required fields: Group Name / Services list')
+      return
+    }
+    // แปลงเป็น array ถ้าเป็น string
+    let serviceList = []
+    if (Array.isArray(row.services)) {
+      serviceList = row.services
+    } else if (typeof row.services === 'string') {
+      serviceList = row.services.split(';').map(s => s.trim()).filter(s => s.length > 0)
+    } else {
+      alert('Services data format is invalid')
+      return
+    }
+    // แก้ชื่อ group ถ้าจำเป็น
+    const groupName = /^[0-9]/.test(row.name)
+      ? normalizeServiceName(row.name, 'Port')
+      : row.name
+    // แก้ชื่อ service แต่ละตัวถ้าขึ้นต้นด้วยตัวเลข
+    const fixedServices = serviceList.map(svcName => {
+      return /^[0-9]/.test(svcName)
+        ? normalizeServiceName(svcName, 'Port')
+        : svcName
+    })
+    // สร้างคำสั่ง CLI
+    const command = `add service_group ${groupName} members ${fixedServices.join(',')}`
+    // แสดงผล
+    alert(command)
+  }
 }
+
 
 const addressAPI = async (row) => {
   selectedRowForAPI.value = row
@@ -527,7 +651,7 @@ function exportCommands() {
                   <Column header="Action" style="min-width: 180px" bodyClass="text-center action-cell">
                     <template #body="{ data }">
                       <div class="flex gap-2 justify-center">
-                        <Button label="CLI" icon="pi pi-code" @click="addressCLI(data)" />
+                        <Button label="CLI" icon="pi pi-code" @click="onClickCLI(data, 'Address')" />
                         <Button
                           label="PUSH API"
                           icon="pi pi-send"
@@ -627,7 +751,7 @@ function exportCommands() {
                   <Column header="Action" style="min-width: 180px" bodyClass="text-center">
                       <template #body="{ data }">
                       <div class="flex gap-2 justify-center">
-                          <Button label="CLI" icon="pi pi-code" @click="handleCLI(data)" />
+                          <Button label="CLI" icon="pi pi-code" @click="onClickCLI(data, 'Address Group')" />
                           <Button
                           label="PUSH API"
                           icon="pi pi-send"
@@ -706,7 +830,7 @@ function exportCommands() {
                     <Column header="Action" style="min-width: 180px" bodyClass="text-center">
                       <template #body="{ data }">
                         <div class="flex gap-2 justify-center">
-                          <Button label="CLI" icon="pi pi-code" @click="handleCLI(data)" />
+                          <Button label="CLI" icon="pi pi-code" @click="onClickCLI(data, 'Services')" />
                           <Button
                             label="PUSH API"
                             icon="pi pi-send"
@@ -802,7 +926,7 @@ function exportCommands() {
                       <Column header="Action" style="min-width: 180px" bodyClass="text-center">
                         <template #body="{ data }">
                           <div class="flex gap-2 justify-center">
-                            <Button label="CLI" icon="pi pi-code" @click="handleCLI(data)" />
+                            <Button label="CLI" icon="pi pi-code" @click="onClickCLI(data, 'Service Group')" />
                             <Button
                               label="PUSH API"
                               icon="pi pi-send"

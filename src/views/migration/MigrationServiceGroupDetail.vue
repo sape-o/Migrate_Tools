@@ -139,7 +139,6 @@ function handleCLI(row) {
     alert('Missing required fields: Group Name / Services list')
     return
   }
-
   // แปลงเป็น array ถ้าเป็น string
   let serviceList = []
   if (Array.isArray(row.services)) {
@@ -150,22 +149,18 @@ function handleCLI(row) {
     alert('Services data format is invalid')
     return
   }
-
   // แก้ชื่อ group ถ้าจำเป็น
   const groupName = /^[0-9]/.test(row.name)
     ? normalizeServiceName(row.name, 'Port')
     : row.name
-
   // แก้ชื่อ service แต่ละตัวถ้าขึ้นต้นด้วยตัวเลข
   const fixedServices = serviceList.map(svcName => {
     return /^[0-9]/.test(svcName)
       ? normalizeServiceName(svcName, 'Port')
       : svcName
   })
-
   // สร้างคำสั่ง CLI
   const command = `add service_group ${groupName} members ${fixedServices.join(',')}`
-
   // แสดงผล
   alert(command)
 }

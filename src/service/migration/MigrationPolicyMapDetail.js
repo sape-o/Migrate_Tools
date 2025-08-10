@@ -15,9 +15,7 @@ export async function getMigrationMappedData(id, token) {
     }
 
     const result = await res.json()
-    console.log(result);
         
-    console.log(result)
     return result
   } catch (error) {
     console.error('Fetch error:', error)
